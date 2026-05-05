@@ -10,13 +10,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Service handles user business logic.
 type Service struct {
 	repo *Repository
 	log  zerolog.Logger
 }
 
-// NewService creates a new user service.
 func NewService(repo *Repository, log zerolog.Logger) *Service {
 	return &Service{
 		repo: repo,
@@ -24,7 +22,6 @@ func NewService(repo *Repository, log zerolog.Logger) *Service {
 	}
 }
 
-// GetMyProfile returns the authenticated user's full profile.
 func (s *Service) GetMyProfile(ctx context.Context, userID uuid.UUID) (*ProfileResponse, error) {
 	user, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
@@ -50,7 +47,6 @@ func (s *Service) GetMyProfile(ctx context.Context, userID uuid.UUID) (*ProfileR
 	}, nil
 }
 
-// GetPublicProfile returns a public user profile by username.
 func (s *Service) GetPublicProfile(ctx context.Context, username string) (*PublicProfileResponse, error) {
 	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
@@ -73,9 +69,8 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 	}, nil
 }
 
-// UpdateProfile updates the authenticated user's profile.
 func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req *UpdateProfileRequest) (*ProfileResponse, error) {
-	// Check username uniqueness if being changed
+
 	if req.Username != nil {
 		exists, err := s.repo.UsernameExists(ctx, *req.Username, userID)
 		if err != nil {
@@ -95,7 +90,6 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req *Upda
 	return s.GetMyProfile(ctx, userID)
 }
 
-// UpdateAvatar updates the user's profile picture URL.
 func (s *Service) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) (*ProfileResponse, error) {
 	if err := s.repo.UpdateAvatar(ctx, userID, avatarURL); err != nil {
 		s.log.Error().Err(err).Msg("failed to update avatar")

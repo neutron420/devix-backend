@@ -6,7 +6,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Service provides methods to trigger websocket events from other modules.
 type Service struct {
 	hub *Hub
 	log zerolog.Logger
@@ -19,7 +18,6 @@ func NewService(hub *Hub, log zerolog.Logger) *Service {
 	}
 }
 
-// BroadcastEvent sends an event to all connected clients.
 func (s *Service) BroadcastEvent(ctx context.Context, eventType string, payload interface{}) {
 	s.log.Debug().Str("type", eventType).Msg("broadcasting websocket event")
 	s.hub.Broadcast(Message{
@@ -28,7 +26,6 @@ func (s *Service) BroadcastEvent(ctx context.Context, eventType string, payload 
 	})
 }
 
-// NotifyUser sends an event to a specific user.
 func (s *Service) NotifyUser(ctx context.Context, userID uuid.UUID, eventType string, payload interface{}) {
 	s.log.Debug().Str("type", eventType).Str("user_id", userID.String()).Msg("notifying user via websocket")
 	s.hub.NotifyUser(userID, Message{

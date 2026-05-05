@@ -6,11 +6,9 @@ import (
 )
 
 const (
-	// HeaderRequestID is the HTTP header key for request tracing.
 	HeaderRequestID = "X-Request-ID"
 )
 
-// RequestID injects a unique request ID into each request for tracing.
 func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader(HeaderRequestID)

@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Logger returns a request logging middleware using zerolog.
 func Logger(log zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

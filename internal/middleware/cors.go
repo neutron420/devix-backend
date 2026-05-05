@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORS returns a CORS middleware configured for the given allowed origins.
 func CORS(origins []string) gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowOrigins:     origins,

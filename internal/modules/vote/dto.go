@@ -5,8 +5,8 @@ type VoteRequest struct {
 }
 
 type VoteResponse struct {
-	ID        string `json:"id"`
-	UserID    string `json:"user_id"`
-	VoteType  int    `json:"vote_type"`
-	NewCount  int    `json:"new_count"`
+	ID       string `json:"id"`
+	UserID   string `json:"user_id"`
+	VoteType int    `json:"vote_type"`
+	NewCount int    `json:"new_count"`
 }

@@ -15,21 +15,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// StorageProvider defines the interface for file storage backends.
-// Implementations can be local filesystem, S3, GCS, etc.
 type StorageProvider interface {
 	Upload(ctx context.Context, file io.Reader, directory, filename string) (string, error)
 	Delete(ctx context.Context, path string) error
 	GetURL(path string) string
 }
 
-// LocalStorage implements StorageProvider for local filesystem storage.
 type LocalStorage struct {
 	basePath string
 	baseURL  string
 }
 
-// NewLocalStorage creates a new local storage provider.
 func NewLocalStorage(basePath, baseURL string) *LocalStorage {
 	return &LocalStorage{
 		basePath: basePath,
@@ -37,9 +33,8 @@ func NewLocalStorage(basePath, baseURL string) *LocalStorage {
 	}
 }
 
-// Upload saves a file to the local filesystem.
 func (s *LocalStorage) Upload(_ context.Context, file io.Reader, directory, filename string) (string, error) {
-	// Generate unique filename to prevent conflicts
+
 	ext := filepath.Ext(filename)
 	uniqueName := uuid.New().String() + ext
 
@@ -56,17 +51,15 @@ func (s *LocalStorage) Upload(_ context.Context, file io.Reader, directory, file
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		// Clean up on failure
+
 		os.Remove(filePath)
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}
 
-	// Return the relative path for storage in DB
 	relativePath := filepath.Join(directory, uniqueName)
 	return relativePath, nil
 }
 
-// Delete removes a file from the local filesystem.
 func (s *LocalStorage) Delete(_ context.Context, path string) error {
 	fullPath := filepath.Join(s.basePath, path)
 	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
@@ -75,19 +68,16 @@ func (s *LocalStorage) Delete(_ context.Context, path string) error {
 	return nil
 }
 
-// GetURL returns the URL for accessing a stored file.
 func (s *LocalStorage) GetURL(path string) string {
 	return s.baseURL + "/" + filepath.ToSlash(path)
 }
 
-// R2Storage implements StorageProvider for Cloudflare R2 (S3-compatible).
 type R2Storage struct {
 	client     *s3.Client
 	bucketName string
 	publicURL  string
 }
 
-// NewR2Storage creates a new R2 storage provider.
 func NewR2Storage(ctx context.Context, cfg config.R2Config) (*R2Storage, error) {
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
@@ -113,7 +103,6 @@ func NewR2Storage(ctx context.Context, cfg config.R2Config) (*R2Storage, error) 
 	}, nil
 }
 
-// Upload saves a file to R2.
 func (s *R2Storage) Upload(ctx context.Context, file io.Reader, directory, filename string) (string, error) {
 	ext := filepath.Ext(filename)
 	uniqueName := uuid.New().String() + ext
@@ -135,7 +124,6 @@ func (s *R2Storage) inputPutObject(key string, file io.Reader) *s3.PutObjectInpu
 	}
 }
 
-// Delete removes a file from R2.
 func (s *R2Storage) Delete(ctx context.Context, path string) error {
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucketName),
@@ -147,7 +135,6 @@ func (s *R2Storage) Delete(ctx context.Context, path string) error {
 	return nil
 }
 
-// GetURL returns the public URL for the file.
 func (s *R2Storage) GetURL(path string) string {
 	return s.publicURL + "/" + path
 }

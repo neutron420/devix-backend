@@ -11,13 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles user HTTP requests.
 type Handler struct {
 	service      *Service
 	mediaService *media.Service
 }
 
-// NewHandler creates a new user handler.
 func NewHandler(service *Service, mediaService *media.Service) *Handler {
 	return &Handler{
 		service:      service,
@@ -25,7 +23,6 @@ func NewHandler(service *Service, mediaService *media.Service) *Handler {
 	}
 }
 
-// GetMe handles GET /api/v1/users/me
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -47,7 +44,6 @@ func (h *Handler) GetMe(c *gin.Context) {
 	response.OK(c, profile)
 }
 
-// UpdateMe handles PUT /api/v1/users/me
 func (h *Handler) UpdateMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -75,7 +71,6 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	response.OK(c, profile)
 }
 
-// UpdateAvatar handles PUT /api/v1/users/me/avatar
 func (h *Handler) UpdateAvatar(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -90,7 +85,6 @@ func (h *Handler) UpdateAvatar(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Upload avatar via media service
 	url, err := h.mediaService.UploadAvatar(c.Request.Context(), file, header)
 	if err != nil {
 		var appErr *apperrors.AppError
@@ -102,7 +96,6 @@ func (h *Handler) UpdateAvatar(c *gin.Context) {
 		return
 	}
 
-	// Update user record
 	profile, err := h.service.UpdateAvatar(c.Request.Context(), userID, url)
 	if err != nil {
 		var appErr *apperrors.AppError
@@ -117,7 +110,6 @@ func (h *Handler) UpdateAvatar(c *gin.Context) {
 	response.OK(c, profile)
 }
 
-// GetPublicProfile handles GET /api/v1/users/:username
 func (h *Handler) GetPublicProfile(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {

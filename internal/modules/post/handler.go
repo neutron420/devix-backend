@@ -143,7 +143,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		response.Error(c, apperrors.BadRequest("Invalid post ID"))
 		return
 	}
-	// Verify post ownership
+
 	post, err := h.service.GetByID(c.Request.Context(), postID)
 	if err != nil {
 		var appErr *apperrors.AppError

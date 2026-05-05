@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// NewGormDB creates a new GORM database connection.
 func NewGormDB(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	gormConfig := &gorm.Config{
 		PrepareStmt: true,
@@ -26,7 +25,6 @@ func NewGormDB(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// Connection pooling
 	sqlDB.SetMaxIdleConns(int(cfg.MinConns))
 	sqlDB.SetMaxOpenConns(int(cfg.MaxConns))
 	sqlDB.SetConnMaxLifetime(time.Hour)

@@ -10,7 +10,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds all application configuration.
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
@@ -55,16 +54,16 @@ type MediaConfig struct {
 	AllowedImageTypes []string
 	AllowedVideoTypes []string
 	MaxImagesPerPost  int
-	StorageType       string // "local" or "r2"
+	StorageType       string
 }
 
 type R2Config struct {
-	AccountID   string
-	AccessKey   string
-	SecretKey   string
-	BucketName  string
-	PublicURL   string
-	Endpoint    string
+	AccountID  string
+	AccessKey  string
+	SecretKey  string
+	BucketName string
+	PublicURL  string
+	Endpoint   string
 }
 
 type CORSConfig struct {
@@ -78,9 +77,8 @@ type RateLimitConfig struct {
 	AuthWindow   time.Duration
 }
 
-// Load reads the .env file and populates the Config struct.
 func Load() (*Config, error) {
-	// Load .env file (ignore error if not found — rely on OS env vars in prod)
+
 	_ = godotenv.Load()
 
 	cfg := &Config{
@@ -141,12 +139,10 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// IsProd returns true if the environment is production.
 func (c *Config) IsProd() bool {
 	return c.Server.Env == "production"
 }
 
-// IsDev returns true if the environment is development.
 func (c *Config) IsDev() bool {
 	return c.Server.Env == "development"
 }
@@ -163,8 +159,6 @@ func (c *Config) validate() error {
 	}
 	return nil
 }
-
-// --- Helper functions ---
 
 func getEnv(key, fallback string) string {
 	if val := os.Getenv(key); val != "" {

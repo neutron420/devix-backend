@@ -17,7 +17,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Handlers holds all module handlers for dependency injection.
 type Handlers struct {
 	Auth    *auth.Handler
 	User    *user.Handler
@@ -28,7 +27,6 @@ type Handlers struct {
 	WS      *websocket.Handler
 }
 
-// Setup configures the Gin engine with all routes and middleware.
 func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, handlers *Handlers) *gin.Engine {
 	if cfg.IsProd() {
 		gin.SetMode(gin.ReleaseMode)
@@ -36,10 +34,8 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 
 	r := gin.New()
 
-	// Recovery middleware
 	r.Use(gin.Recovery())
 
-	// Global middleware chain
 	rateLimiter := middleware.NewInMemoryRateLimiter()
 
 	r.Use(middleware.RequestID())
@@ -47,10 +43,8 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	r.Use(middleware.CORS(cfg.CORS.Origins))
 	r.Use(middleware.RateLimit(rateLimiter, cfg.Rate.Requests, cfg.Rate.Window))
 
-	// Serve uploaded files
 	media.RegisterRoutes(r, cfg.Media.UploadDir)
 
-	// Root route
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Welcome to Devix API",
@@ -59,23 +53,18 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 		})
 	})
 
-	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "devix-backend"})
 	})
 
-	// WebSocket route
 	r.GET("/ws", middleware.Auth(jwtManager), handlers.WS.ServeWS)
 
-	// API v1 routes
 	v1 := r.Group("/api/v1")
 
-	// Auth routes (with stricter rate limiting)
 	authGroup := v1.Group("")
 	authGroup.Use(middleware.AuthRateLimit(rateLimiter, cfg.Rate.AuthRequests, cfg.Rate.AuthWindow))
 	auth.RegisterRoutes(authGroup, handlers.Auth)
 
-	// Module routes
 	user.RegisterRoutes(v1, handlers.User, jwtManager)
 	post.RegisterRoutes(v1, handlers.Post, jwtManager)
 	comment.RegisterRoutes(v1, handlers.Comment, jwtManager)

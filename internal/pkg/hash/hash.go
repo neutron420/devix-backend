@@ -10,16 +10,14 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// Argon2id parameters — tuned for security without excessive CPU usage.
 const (
 	argonTime    = 1
-	argonMemory  = 64 * 1024 // 64 MB
+	argonMemory  = 64 * 1024
 	argonThreads = 4
 	argonKeyLen  = 32
 	argonSaltLen = 16
 )
 
-// HashPassword hashes a password using Argon2id.
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {
@@ -28,7 +26,6 @@ func HashPassword(password string) (string, error) {
 
 	hash := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
 
-	// Encode as: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
@@ -36,7 +33,6 @@ func HashPassword(password string) (string, error) {
 		argon2.Version, argonMemory, argonTime, argonThreads, b64Salt, b64Hash), nil
 }
 
-// VerifyPassword checks a password against an Argon2id hash.
 func VerifyPassword(password, encodedHash string) (bool, error) {
 	parts := strings.Split(encodedHash, "$")
 	if len(parts) != 6 {
@@ -63,6 +59,5 @@ func VerifyPassword(password, encodedHash string) (bool, error) {
 
 	newHash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(existingHash)))
 
-	// Constant-time comparison to prevent timing attacks
 	return subtle.ConstantTimeCompare(existingHash, newHash) == 1, nil
 }

@@ -13,7 +13,6 @@ const (
 	MediaTypeVideo MediaType = "video"
 )
 
-// Media represents an attachment to a post.
 type Media struct {
 	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	PostID       uuid.UUID `gorm:"type:uuid;not null;index"`
@@ -24,6 +23,6 @@ type Media struct {
 	OriginalName *string   `gorm:"size:255"`
 	Width        *int
 	Height       *int
-	SortOrder    int       `gorm:"default:0"`
+	SortOrder    int `gorm:"default:0"`
 	CreatedAt    time.Time
 }

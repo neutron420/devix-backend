@@ -7,27 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// Message represents the standard WebSocket message format.
 type Message struct {
 	Type    string      `json:"type"`
 	Payload interface{} `json:"payload"`
 }
 
-// Hub maintains the set of active clients and broadcasts messages to them.
 type Hub struct {
-	// Registered clients.
 	clients map[*Client]bool
 
-	// Inbound messages from the clients.
 	broadcast chan []byte
 
-	// Register requests from the clients.
 	register chan *Client
 
-	// Unregister requests from clients.
 	unregister chan *Client
 
-	// Map to track users to their clients for targeted notifications
 	userClients map[uuid.UUID][]*Client
 
 	mu sync.RWMutex
@@ -56,8 +49,7 @@ func (h *Hub) Run() {
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
-				
-				// Remove from userClients map
+
 				cls := h.userClients[client.UserID]
 				for i, c := range cls {
 					if c == client {
@@ -76,8 +68,7 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- message:
 				default:
-					// If the buffer is full, we don't want to block the hub
-					// We'll just skip this client and the client's write pump will eventually handle it
+
 				}
 			}
 			h.mu.RUnlock()
@@ -85,7 +76,6 @@ func (h *Hub) Run() {
 	}
 }
 
-// Broadcast sends a message to all connected clients.
 func (h *Hub) Broadcast(msg Message) {
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -94,7 +84,6 @@ func (h *Hub) Broadcast(msg Message) {
 	h.broadcast <- data
 }
 
-// NotifyUser sends a message to a specific user's connected clients.
 func (h *Hub) NotifyUser(userID uuid.UUID, msg Message) {
 	data, err := json.Marshal(msg)
 	if err != nil {

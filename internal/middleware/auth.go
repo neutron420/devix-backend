@@ -12,15 +12,13 @@ import (
 )
 
 const (
-	// ContextKeyUserID is the gin context key for the authenticated user's ID.
-	ContextKeyUserID   = "user_id"
-	// ContextKeyUsername is the gin context key for the authenticated user's username.
+	ContextKeyUserID = "user_id"
+
 	ContextKeyUsername = "username"
-	// ContextKeyUserRole is the gin context key for the authenticated user's role.
+
 	ContextKeyUserRole = "user_role"
 )
 
-// Auth returns a middleware that validates JWT access tokens.
 func Auth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
@@ -47,7 +45,6 @@ func Auth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 			return
 		}
 
-		// Set user context values for downstream handlers
 		c.Set(ContextKeyUserID, claims.UserID)
 		c.Set(ContextKeyUsername, claims.Username)
 		c.Set(ContextKeyUserRole, claims.Role)
@@ -56,7 +53,6 @@ func Auth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	}
 }
 
-// OptionalAuth is like Auth but allows unauthenticated requests to pass through.
 func OptionalAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
@@ -85,7 +81,6 @@ func OptionalAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	}
 }
 
-// RequireRole returns a middleware that checks the user has one of the specified roles.
 func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get(ContextKeyUserRole)
@@ -106,7 +101,6 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	}
 }
 
-// GetUserID extracts the authenticated user's ID from the gin context.
 func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 	val, exists := c.Get(ContextKeyUserID)
 	if !exists {
@@ -116,7 +110,6 @@ func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
-// GetUsername extracts the authenticated user's username from the gin context.
 func GetUsername(c *gin.Context) string {
 	val, _ := c.Get(ContextKeyUsername)
 	if s, ok := val.(string); ok {

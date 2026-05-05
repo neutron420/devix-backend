@@ -41,7 +41,6 @@ func (r *Repository) GetByPostID(ctx context.Context, postID uuid.UUID) ([]model
 		return nil, err
 	}
 
-	// Fetch authors
 	for i := range comments {
 		var author models.User
 		if err := r.db.WithContext(ctx).First(&author, "id = ?", comments[i].AuthorID).Error; err == nil {

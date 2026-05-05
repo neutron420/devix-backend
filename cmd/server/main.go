@@ -28,13 +28,12 @@ import (
 )
 
 func main() {
-	// ── 1. Load configuration ──────────────────────────────────────
+
 	cfg, err := config.Load()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
-	// ── 2. Initialize logger ───────────────────────────────────────
 	log := logger.New(cfg.Server.Env)
 	log.Info().
 		Str("env", cfg.Server.Env).
@@ -43,14 +42,12 @@ func main() {
 
 	ctx := context.Background()
 
-	// ── 3. Connect to PostgreSQL (GORM) ───────────────────────────
 	db, err := database.NewGormDB(cfg.Database)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to PostgreSQL")
 	}
 	log.Info().Msg("connected to PostgreSQL (GORM)")
 
-	// ── 3b. Auto Migration ────────────────────────────────────────
 	log.Info().Msg("running auto-migrations...")
 	err = db.AutoMigrate(
 		&models.User{},
@@ -66,7 +63,6 @@ func main() {
 	}
 	log.Info().Msg("auto-migration completed successfully")
 
-	// ── 4. Connect to Redis (optional) ─────────────────────────────
 	redis, err := database.NewRedisClient(ctx, cfg.Redis)
 	if err != nil {
 		log.Warn().Err(err).Msg("Redis unavailable — running without cache")
@@ -77,10 +73,8 @@ func main() {
 		log.Info().Msg("Redis not configured — running without cache")
 	}
 
-	// ── 5. Setup custom validators ─────────────────────────────────
 	validator.Setup()
 
-	// ── 6. Initialize JWT Manager ──────────────────────────────────
 	jwtManager := jwtpkg.NewManager(
 		cfg.JWT.AccessSecret,
 		cfg.JWT.RefreshSecret,
@@ -88,7 +82,6 @@ func main() {
 		cfg.JWT.RefreshExpiry,
 	)
 
-	// ── 7. Initialize storage provider ─────────────────────────────
 	var storage media.StorageProvider
 	if cfg.Media.StorageType == "r2" {
 		var err error
@@ -102,16 +95,13 @@ func main() {
 		log.Info().Msg("using local filesystem storage")
 	}
 
-	// ── 8. Initialize background job queue ─────────────────────────
 	jobQueue := queue.New(100, log)
 	jobQueue.Start(ctx, 3)
 	defer jobQueue.Close()
 
-	// ── 8b. Initialize WebSocket Hub ──────────────────────────────
 	hub := wsmod.NewHub()
 	go hub.Run()
 
-	// ── 9. Initialize repositories ─────────────────────────────────
 	authRepo := auth.NewRepository(db)
 	userRepo := user.NewRepository(db)
 	mediaRepo := media.NewRepository(db)
@@ -120,7 +110,6 @@ func main() {
 	tagRepo := tag.NewRepository(db)
 	voteRepo := vote.NewRepository(db)
 
-	// ── 10. Initialize services ────────────────────────────────────
 	wsService := wsmod.NewService(hub, log)
 	authService := auth.NewService(authRepo, jwtManager, log)
 	mediaService := media.NewService(mediaRepo, storage, cfg.Media, log)
@@ -130,7 +119,6 @@ func main() {
 	commentService := comment.NewService(commentRepo, wsService, log)
 	voteService := vote.NewService(voteRepo, log)
 
-	// ── 11. Initialize handlers ────────────────────────────────────
 	handlers := &router.Handlers{
 		Auth:    auth.NewHandler(authService),
 		User:    user.NewHandler(userService, mediaService),
@@ -141,10 +129,8 @@ func main() {
 		WS:      wsmod.NewHandler(hub),
 	}
 
-	// ── 12. Setup router ───────────────────────────────────────────
 	engine := router.Setup(cfg, log, jwtManager, handlers)
 
-	// ── 13. Start HTTP server ──────────────────────────────────────
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
 		Handler:      engine,
@@ -153,7 +139,6 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Graceful shutdown
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("server failed")
@@ -162,7 +147,6 @@ func main() {
 
 	log.Info().Str("addr", srv.Addr).Msg("server started")
 
-	// ── 14. Wait for shutdown signal ───────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit

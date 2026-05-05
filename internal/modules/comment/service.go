@@ -57,7 +57,6 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 	}
 	_ = s.repo.IncrementPostCommentCount(ctx, postID)
 
-	// Broadcast new comment event
 	res := &CommentResponse{
 		ID: comment.ID.String(), PostID: postID.String(), Content: content, Depth: depth,
 		CreatedAt: now.Format(time.RFC3339), UpdatedAt: now.Format(time.RFC3339),

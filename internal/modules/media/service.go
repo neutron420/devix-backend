@@ -16,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Service handles media business logic.
 type Service struct {
 	repo    *Repository
 	storage StorageProvider
@@ -24,7 +23,6 @@ type Service struct {
 	log     zerolog.Logger
 }
 
-// NewService creates a new media service.
 func NewService(repo *Repository, storage StorageProvider, cfg config.MediaConfig, log zerolog.Logger) *Service {
 	return &Service{
 		repo:    repo,
@@ -34,7 +32,6 @@ func NewService(repo *Repository, storage StorageProvider, cfg config.MediaConfi
 	}
 }
 
-// UploadAvatar uploads a user's profile picture.
 func (s *Service) UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader) (string, error) {
 	mimeType, err := s.detectMIME(file)
 	if err != nil {
@@ -54,7 +51,6 @@ func (s *Service) UploadAvatar(ctx context.Context, file multipart.File, header 
 	return s.storage.GetURL(path), nil
 }
 
-// UploadPostMedia uploads media files for a post.
 func (s *Service) UploadPostMedia(ctx context.Context, postID uuid.UUID, files []*FileUpload) ([]*models.Media, error) {
 	var results []*models.Media
 
@@ -73,7 +69,6 @@ func (s *Service) UploadPostMedia(ctx context.Context, postID uuid.UUID, files [
 			return nil, apperrors.BadRequest("File type not allowed")
 		}
 
-		// Check limits
 		count, _ := s.repo.CountByPostAndType(ctx, postID, fileType)
 		if fileType == models.MediaTypeImage && int(count) >= s.cfg.MaxImagesPerPost {
 			return nil, apperrors.BadRequest("Max images reached")

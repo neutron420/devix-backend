@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Tag represents a categorization for posts.
 type Tag struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Name        string    `gorm:"size:50;uniqueIndex;not null"`

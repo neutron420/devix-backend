@@ -10,10 +10,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// NewRedisClient creates a new Redis client. Returns nil if Redis URL is empty.
 func NewRedisClient(ctx context.Context, cfg config.RedisConfig) (*redis.Client, error) {
 	if cfg.URL == "" {
-		return nil, nil // Redis is optional
+		return nil, nil
 	}
 
 	opts, err := redis.ParseURL(cfg.URL)
@@ -34,7 +33,6 @@ func NewRedisClient(ctx context.Context, cfg config.RedisConfig) (*redis.Client,
 
 	client := redis.NewClient(opts)
 
-	// Verify connectivity
 	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

@@ -39,7 +39,6 @@ func (r *Repository) GetBySlug(ctx context.Context, slug string) (*models.Post, 
 		return nil, err
 	}
 
-	// Manual author fetch since we aren't using DB-level foreign key for the virtual profile struct
 	var author models.User
 	if err := r.db.WithContext(ctx).First(&author, "id = ?", post.AuthorID).Error; err == nil {
 		post.Author = &models.UserPublicProfile{
@@ -80,7 +79,7 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	}
 
 	if query.Search != "" {
-		// Use raw SQL for full-text search as GORM abstraction for this varies
+
 		db = db.Where("to_tsvector('english', posts.title || ' ' || posts.content) @@ plainto_tsquery('english', ?)", query.Search)
 	}
 
@@ -90,21 +89,18 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 			Where("tags.slug = ?", query.Tag)
 	}
 
-	// Cursor pagination
 	if query.Cursor != "" {
 		if decoded, err := pagination.DecodeCursor(query.Cursor); err == nil && decoded != nil {
 			db = db.Where("(posts.created_at, posts.id) < (?, ?)", decoded.CreatedAt, decoded.ID)
 		}
 	}
 
-	// Sorting
 	if query.Sort == "trending" {
 		db = db.Order("vote_count desc, view_count desc, created_at desc")
 	} else {
 		db = db.Order("created_at desc, id desc")
 	}
 
-	// Fetch limit+1 to check if there are more
 	err := db.Limit(limit + 1).Find(&posts).Error
 	if err != nil {
 		return nil, false, err
@@ -115,7 +111,6 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 		posts = posts[:limit]
 	}
 
-	// Post-process authors
 	for i := range posts {
 		var author models.User
 		if err := r.db.WithContext(ctx).First(&author, "id = ?", posts[i].AuthorID).Error; err == nil {
@@ -181,7 +176,6 @@ func (r *Repository) SetPostTags(ctx context.Context, postID uuid.UUID, tagIDs [
 		}
 	}
 
-	// GORM handles the junction table association automatically
 	return r.db.WithContext(ctx).Model(&post).Association("Tags").Replace(tags)
 }
 

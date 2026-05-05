@@ -14,14 +14,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Service handles auth business logic.
 type Service struct {
-	repo       *Repository
-	jwt        *jwtpkg.Manager
-	log        zerolog.Logger
+	repo *Repository
+	jwt  *jwtpkg.Manager
+	log  zerolog.Logger
 }
 
-// NewService creates a new auth service.
 func NewService(repo *Repository, jwt *jwtpkg.Manager, log zerolog.Logger) *Service {
 	return &Service{
 		repo: repo,
@@ -30,7 +28,6 @@ func NewService(repo *Repository, jwt *jwtpkg.Manager, log zerolog.Logger) *Serv
 	}
 }
 
-// Signup registers a new user.
 func (s *Service) Signup(ctx context.Context, req *SignupRequest) (*AuthResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Username = strings.TrimSpace(req.Username)
@@ -85,7 +82,6 @@ func (s *Service) Signup(ctx context.Context, req *SignupRequest) (*AuthResponse
 	}, nil
 }
 
-// Login authenticates a user.
 func (s *Service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error) {
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil || user == nil {
@@ -120,7 +116,6 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 	}, nil
 }
 
-// RefreshTokens rotates tokens.
 func (s *Service) RefreshTokens(ctx context.Context, refreshToken string) (*AuthResponse, error) {
 	tokenHash := HashToken(refreshToken)
 	stored, err := s.repo.GetRefreshToken(ctx, tokenHash)

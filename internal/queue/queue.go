@@ -7,17 +7,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Job represents a background job to be processed.
 type Job struct {
 	Type    string
 	Payload interface{}
 }
 
-// Handler processes a specific job type.
 type Handler func(ctx context.Context, payload interface{}) error
 
-// Queue is a simple in-memory job queue.
-// For production at scale, replace with Redis-based queue (e.g., asynq).
 type Queue struct {
 	jobs     chan Job
 	handlers map[string]Handler
@@ -25,7 +21,6 @@ type Queue struct {
 	log      zerolog.Logger
 }
 
-// New creates a new job queue.
 func New(bufferSize int, log zerolog.Logger) *Queue {
 	return &Queue{
 		jobs:     make(chan Job, bufferSize),
@@ -34,14 +29,12 @@ func New(bufferSize int, log zerolog.Logger) *Queue {
 	}
 }
 
-// Register adds a handler for a job type.
 func (q *Queue) Register(jobType string, handler Handler) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.handlers[jobType] = handler
 }
 
-// Enqueue adds a job to the queue.
 func (q *Queue) Enqueue(job Job) {
 	select {
 	case q.jobs <- job:
@@ -51,7 +44,6 @@ func (q *Queue) Enqueue(job Job) {
 	}
 }
 
-// Start begins processing jobs with the given number of workers.
 func (q *Queue) Start(ctx context.Context, numWorkers int) {
 	for i := 0; i < numWorkers; i++ {
 		go q.worker(ctx, i)
@@ -85,7 +77,6 @@ func (q *Queue) worker(ctx context.Context, id int) {
 	}
 }
 
-// Close shuts down the queue.
 func (q *Queue) Close() {
 	close(q.jobs)
 }

@@ -5,20 +5,18 @@ import (
 	"net/http"
 )
 
-// Error code constants for API responses.
 const (
-	CodeNotFound       = "NOT_FOUND"
-	CodeUnauthorized   = "UNAUTHORIZED"
-	CodeForbidden      = "FORBIDDEN"
-	CodeValidation     = "VALIDATION_ERROR"
-	CodeConflict       = "CONFLICT"
-	CodeInternal       = "INTERNAL_ERROR"
-	CodeBadRequest     = "BAD_REQUEST"
-	CodeTooManyReqs    = "TOO_MANY_REQUESTS"
+	CodeNotFound        = "NOT_FOUND"
+	CodeUnauthorized    = "UNAUTHORIZED"
+	CodeForbidden       = "FORBIDDEN"
+	CodeValidation      = "VALIDATION_ERROR"
+	CodeConflict        = "CONFLICT"
+	CodeInternal        = "INTERNAL_ERROR"
+	CodeBadRequest      = "BAD_REQUEST"
+	CodeTooManyReqs     = "TOO_MANY_REQUESTS"
 	CodePayloadTooLarge = "PAYLOAD_TOO_LARGE"
 )
 
-// AppError is the standard error type used throughout the application.
 type AppError struct {
 	Code       string            `json:"code"`
 	Message    string            `json:"message"`
@@ -27,7 +25,6 @@ type AppError struct {
 	Err        error             `json:"-"`
 }
 
-// ValidationError represents a single field-level validation error.
 type ValidationError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
@@ -43,8 +40,6 @@ func (e *AppError) Error() string {
 func (e *AppError) Unwrap() error {
 	return e.Err
 }
-
-// --- Factory functions ---
 
 func NotFound(resource string) *AppError {
 	return &AppError{
@@ -120,7 +115,6 @@ func PayloadTooLarge(msg string) *AppError {
 	}
 }
 
-// Wrap wraps an existing error with an AppError.
 func Wrap(err error, code string, msg string, status int) *AppError {
 	return &AppError{
 		Code:       code,

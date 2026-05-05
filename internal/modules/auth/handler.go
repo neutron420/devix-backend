@@ -9,17 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles auth HTTP requests.
 type Handler struct {
 	service *Service
 }
 
-// NewHandler creates a new auth handler.
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// Signup handles POST /api/v1/auth/signup
 func (h *Handler) Signup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -41,7 +38,6 @@ func (h *Handler) Signup(c *gin.Context) {
 	response.Created(c, result)
 }
 
-// Login handles POST /api/v1/auth/login
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,7 +59,6 @@ func (h *Handler) Login(c *gin.Context) {
 	response.OK(c, result)
 }
 
-// Refresh handles POST /api/v1/auth/refresh
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -85,11 +80,10 @@ func (h *Handler) Refresh(c *gin.Context) {
 	response.OK(c, result)
 }
 
-// Logout handles POST /api/v1/auth/logout
 func (h *Handler) Logout(c *gin.Context) {
 	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Still return success to prevent token enumeration
+
 		response.NoContent(c)
 		return
 	}

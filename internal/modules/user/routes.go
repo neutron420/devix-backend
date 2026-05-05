@@ -7,11 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterRoutes registers all user routes.
 func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Manager) {
 	users := rg.Group("/users")
 	{
-		// Authenticated routes
+
 		me := users.Group("/me", middleware.Auth(jwtManager))
 		{
 			me.GET("", handler.GetMe)
@@ -19,7 +18,6 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Ma
 			me.PUT("/avatar", handler.UpdateAvatar)
 		}
 
-		// Public routes
 		users.GET("/:username", handler.GetPublicProfile)
 	}
 }

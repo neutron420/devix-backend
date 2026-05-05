@@ -9,34 +9,25 @@ import (
 )
 
 const (
-	// Time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
 
-	// Time allowed to read the next pong message from the peer.
 	pongWait = 60 * time.Second
 
-	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
 
-	// Maximum message size allowed from peer.
 	maxMessageSize = 512
 )
 
-// Client is a middleman between the websocket connection and the hub.
 type Client struct {
 	Hub *Hub
 
-	// The websocket connection.
 	Conn *websocket.Conn
 
-	// Buffered channel of outbound messages.
 	send chan []byte
 
-	// UserID associated with this client.
 	UserID uuid.UUID
 }
 
-// ReadPump pumps messages from the websocket connection to the hub.
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.unregister <- c
@@ -53,12 +44,10 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
-		// We don't expect messages from the client for now (read-only for features requested)
-		// If we wanted to handle incoming messages, we would process them here.
+
 	}
 }
 
-// WritePump pumps messages from the hub to the websocket connection.
 func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -70,7 +59,7 @@ func (c *Client) WritePump() {
 		case message, ok := <-c.send:
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The hub closed the channel.
+
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -81,7 +70,6 @@ func (c *Client) WritePump() {
 			}
 			w.Write(message)
 
-			// Add queued chat messages to the current websocket message.
 			n := len(c.send)
 			for i := 0; i < n; i++ {
 				w.Write([]byte{'\n'})
