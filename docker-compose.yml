@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  # ── Devix Backend ─────────────────────────────────────────────
+  
   app:
     build: .
     ports:
