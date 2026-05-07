@@ -37,7 +37,8 @@ type Post struct {
 	VoteCount    int                `gorm:"default:0"`
 	CommentCount int                `gorm:"default:0"`
 	IsPinned     bool               `gorm:"default:false"`
-	CreatedAt    time.Time
+	ExternalLinks string `gorm:"type:text"`
+	CreatedAt     time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
 

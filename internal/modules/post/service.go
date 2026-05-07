@@ -54,7 +54,18 @@ func (s *Service) Create(ctx context.Context, authorID uuid.UUID, req *CreatePos
 		status = models.PostStatusDraft
 	}
 	now := time.Now()
-	post := &models.Post{ID: uuid.New(), AuthorID: authorID, Title: title, Slug: slug, Content: content, PostType: models.PostType(req.PostType), Status: status, CreatedAt: now, UpdatedAt: now}
+	post := &models.Post{
+		ID:            uuid.New(),
+		AuthorID:      authorID,
+		Title:         title,
+		Slug:          slug,
+		Content:       content,
+		PostType:      models.PostType(req.PostType),
+		Status:        status,
+		ExternalLinks: req.ExternalLinks,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
 	if err := s.repo.Create(ctx, post); err != nil {
 		return nil, apperrors.Internal(err)
 	}
@@ -127,7 +138,7 @@ func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *Upd
 	if post.AuthorID != userID {
 		return nil, apperrors.Forbidden("You can only edit your own posts")
 	}
-	var title, content *string
+	var title, content, externalLinks *string
 	if req.Title != nil {
 		t := sanitize.Text(*req.Title)
 		title = &t
@@ -136,7 +147,10 @@ func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *Upd
 		c := sanitize.HTML(*req.Content)
 		content = &c
 	}
-	if err := s.repo.Update(ctx, postID, title, content, req.Status); err != nil {
+	if req.ExternalLinks != nil {
+		externalLinks = req.ExternalLinks
+	}
+	if err := s.repo.Update(ctx, postID, title, content, externalLinks, req.Status); err != nil {
 		return nil, apperrors.Internal(err)
 	}
 	if req.Tags != nil {
@@ -171,7 +185,8 @@ func (s *Service) toResponse(p *models.Post) *PostResponse {
 		ID: p.ID.String(), Title: p.Title, Slug: p.Slug, Content: p.Content,
 		PostType: string(p.PostType), Status: string(p.Status),
 		ViewCount: p.ViewCount, VoteCount: p.VoteCount, CommentCount: p.CommentCount,
-		IsPinned: p.IsPinned, Tags: make([]TagResponse, 0), Media: make([]MediaResponse, 0),
+		IsPinned: p.IsPinned, ExternalLinks: p.ExternalLinks,
+		Tags: make([]TagResponse, 0), Media: make([]MediaResponse, 0),
 		CreatedAt: p.CreatedAt.Format(time.RFC3339), UpdatedAt: p.UpdatedAt.Format(time.RFC3339),
 	}
 	if p.Author != nil {

@@ -9,8 +9,9 @@ import (
 type MediaType string
 
 const (
-	MediaTypeImage MediaType = "image"
-	MediaTypeVideo MediaType = "video"
+	MediaTypeImage    MediaType = "image"
+	MediaTypeVideo    MediaType = "video"
+	MediaTypeDocument MediaType = "document"
 )
 
 type Media struct {

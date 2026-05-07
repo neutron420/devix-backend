@@ -51,8 +51,10 @@ type MediaConfig struct {
 	UploadDir         string
 	MaxImageSize      int64
 	MaxVideoSize      int64
+	MaxDocSize        int64
 	AllowedImageTypes []string
 	AllowedVideoTypes []string
+	AllowedDocTypes   []string
 	MaxImagesPerPost  int
 	StorageType       string
 }
@@ -108,8 +110,10 @@ func Load() (*Config, error) {
 			UploadDir:         getEnv("UPLOAD_DIR", "./uploads"),
 			MaxImageSize:      getInt64Env("MAX_IMAGE_SIZE", 5<<20),
 			MaxVideoSize:      getInt64Env("MAX_VIDEO_SIZE", 50<<20),
+			MaxDocSize:        getInt64Env("MAX_DOC_SIZE", 10<<20),
 			AllowedImageTypes: getSliceEnv("ALLOWED_IMAGE_TYPES", []string{"image/jpeg", "image/png", "image/webp"}),
 			AllowedVideoTypes: getSliceEnv("ALLOWED_VIDEO_TYPES", []string{"video/mp4", "video/webm"}),
+			AllowedDocTypes:   getSliceEnv("ALLOWED_DOC_TYPES", []string{"application/pdf"}),
 			MaxImagesPerPost:  getIntEnv("MAX_IMAGES_PER_POST", 10),
 			StorageType:       getEnv("STORAGE_TYPE", "local"),
 		},

@@ -5,14 +5,16 @@ type CreatePostRequest struct {
 	Content  string   `json:"content" binding:"required,min=10"`
 	PostType string   `json:"post_type" binding:"required,post_type"`
 	Status   string   `json:"status" binding:"omitempty,oneof=draft published"`
-	Tags     []string `json:"tags" binding:"omitempty,max=10,dive,min=1,max=50"`
+	Tags          []string `json:"tags" binding:"omitempty,max=10,dive,min=1,max=50"`
+	ExternalLinks string   `json:"external_links" binding:"omitempty"`
 }
 
 type UpdatePostRequest struct {
 	Title   *string  `json:"title" binding:"omitempty,min=5,max=300"`
 	Content *string  `json:"content" binding:"omitempty,min=10"`
 	Status  *string  `json:"status" binding:"omitempty,oneof=draft published archived"`
-	Tags    []string `json:"tags" binding:"omitempty,max=10,dive,min=1,max=50"`
+	Tags          []string `json:"tags" binding:"omitempty,max=10,dive,min=1,max=50"`
+	ExternalLinks *string  `json:"external_links" binding:"omitempty"`
 }
 
 type FeedQuery struct {
@@ -37,10 +39,11 @@ type PostResponse struct {
 	VoteCount    int             `json:"vote_count"`
 	CommentCount int             `json:"comment_count"`
 	IsPinned     bool            `json:"is_pinned"`
-	Tags         []TagResponse   `json:"tags"`
-	Media        []MediaResponse `json:"media"`
-	CreatedAt    string          `json:"created_at"`
-	UpdatedAt    string          `json:"updated_at"`
+	Tags          []TagResponse   `json:"tags"`
+	Media         []MediaResponse `json:"media"`
+	ExternalLinks string          `json:"external_links,omitempty"`
+	CreatedAt     string          `json:"created_at"`
+	UpdatedAt     string          `json:"updated_at"`
 }
 
 type AuthorResponse struct {

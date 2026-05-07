@@ -126,13 +126,16 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	return posts, hasMore, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id uuid.UUID, title, content *string, status *string) error {
+func (r *Repository) Update(ctx context.Context, id uuid.UUID, title, content, externalLinks *string, status *string) error {
 	updates := make(map[string]interface{})
 	if title != nil {
 		updates["title"] = *title
 	}
 	if content != nil {
 		updates["content"] = *content
+	}
+	if externalLinks != nil {
+		updates["external_links"] = *externalLinks
 	}
 	if status != nil {
 		updates["status"] = *status

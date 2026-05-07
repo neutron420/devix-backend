@@ -61,20 +61,36 @@ func (s *Service) UploadPostMedia(ctx context.Context, postID uuid.UUID, files [
 		}
 
 		var fileType models.MediaType
+		var maxSize int64
+
 		if s.isAllowedImageType(mimeType) {
 			fileType = models.MediaTypeImage
+			maxSize = s.cfg.MaxImageSize
 		} else if s.isAllowedVideoType(mimeType) {
 			fileType = models.MediaTypeVideo
+			maxSize = s.cfg.MaxVideoSize
+		} else if s.isAllowedDocType(mimeType) {
+			fileType = models.MediaTypeDocument
+			maxSize = s.cfg.MaxDocSize
 		} else {
 			return nil, apperrors.BadRequest("File type not allowed")
 		}
 
+		// Check size
+		if f.Header.Size > maxSize {
+			return nil, apperrors.PayloadTooLarge(fmt.Sprintf("File %s is too large", f.Header.Filename))
+		}
+
+		// Check limits per post
 		count, _ := s.repo.CountByPostAndType(ctx, postID, fileType)
 		if fileType == models.MediaTypeImage && int(count) >= s.cfg.MaxImagesPerPost {
 			return nil, apperrors.BadRequest("Max images reached")
 		}
 		if fileType == models.MediaTypeVideo && count >= 1 {
-			return nil, apperrors.BadRequest("Only one video allowed")
+			return nil, apperrors.BadRequest("Only one video allowed per post")
+		}
+		if fileType == models.MediaTypeDocument && count >= 1 {
+			return nil, apperrors.BadRequest("Only one document allowed per post")
 		}
 
 		safeFilename := sanitize.Filename(f.Header.Filename)
@@ -143,6 +159,15 @@ func (s *Service) isAllowedImageType(mimeType string) bool {
 
 func (s *Service) isAllowedVideoType(mimeType string) bool {
 	for _, t := range s.cfg.AllowedVideoTypes {
+		if mimeType == t {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) isAllowedDocType(mimeType string) bool {
+	for _, t := range s.cfg.AllowedDocTypes {
 		if mimeType == t {
 			return true
 		}
