@@ -13,8 +13,10 @@ import (
 	"devix-backend/internal/database"
 	"devix-backend/internal/models"
 	"devix-backend/internal/modules/auth"
+	"devix-backend/internal/modules/bookmark"
 	"devix-backend/internal/modules/comment"
 	"devix-backend/internal/modules/media"
+	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
@@ -57,6 +59,8 @@ func main() {
 		&models.Tag{},
 		&models.Vote{},
 		&models.RefreshToken{},
+		&models.Notification{},
+		&models.Bookmark{},
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("auto-migration failed")
@@ -109,6 +113,8 @@ func main() {
 	commentRepo := comment.NewRepository(db)
 	tagRepo := tag.NewRepository(db)
 	voteRepo := vote.NewRepository(db)
+	notificationRepo := notification.NewRepository(db)
+	bookmarkRepo := bookmark.NewRepository(db)
 
 	wsService := wsmod.NewService(hub, log)
 	authService := auth.NewService(authRepo, jwtManager, log)
@@ -116,8 +122,10 @@ func main() {
 	userService := user.NewService(userRepo, log)
 	tagService := tag.NewService(tagRepo, log)
 	postService := post.NewService(postRepo, mediaService, tagService, log)
-	commentService := comment.NewService(commentRepo, wsService, log)
-	voteService := vote.NewService(voteRepo, log)
+	notificationService := notification.NewService(notificationRepo, log)
+	bookmarkService := bookmark.NewService(bookmarkRepo, postService, log)
+	commentService := comment.NewService(commentRepo, wsService, notificationService, log)
+	voteService := vote.NewService(voteRepo, notificationService, log)
 
 	handlers := &router.Handlers{
 		Auth:    auth.NewHandler(authService),
@@ -125,8 +133,10 @@ func main() {
 		Post:    post.NewHandler(postService, mediaService),
 		Comment: comment.NewHandler(commentService),
 		Tag:     tag.NewHandler(tagService),
-		Vote:    vote.NewHandler(voteService),
-		WS:      wsmod.NewHandler(hub),
+		Vote:         vote.NewHandler(voteService),
+		Notification: notification.NewHandler(notificationService),
+		Bookmark:     bookmark.NewHandler(bookmarkService),
+		WS:           wsmod.NewHandler(hub),
 	}
 
 	engine := router.Setup(cfg, log, jwtManager, handlers)

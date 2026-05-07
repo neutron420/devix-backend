@@ -6,8 +6,10 @@ import (
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/models"
+	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/websocket"
 	"devix-backend/internal/pkg/sanitize"
+
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
@@ -15,16 +17,18 @@ import (
 const maxCommentDepth = 3
 
 type Service struct {
-	repo      *Repository
-	wsService *websocket.Service
-	log       zerolog.Logger
+	repo            *Repository
+	wsService       *websocket.Service
+	notifService    *notification.Service
+	log             zerolog.Logger
 }
 
-func NewService(repo *Repository, wsService *websocket.Service, log zerolog.Logger) *Service {
+func NewService(repo *Repository, wsService *websocket.Service, notifService *notification.Service, log zerolog.Logger) *Service {
 	return &Service{
-		repo:      repo,
-		wsService: wsService,
-		log:       log.With().Str("module", "comment").Logger(),
+		repo:         repo,
+		wsService:    wsService,
+		notifService: notifService,
+		log:          log.With().Str("module", "comment").Logger(),
 	}
 }
 
@@ -62,6 +66,24 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 		CreatedAt: now.Format(time.RFC3339), UpdatedAt: now.Format(time.RFC3339),
 	}
 	s.wsService.BroadcastEvent(ctx, "new_comment", res)
+
+	// Trigger Notification
+	go func() {
+		// If it's a reply, notify parent author
+		if comment.ParentID != nil {
+			parent, _ := s.repo.GetByID(context.Background(), *comment.ParentID)
+			if parent != nil {
+				_ = s.notifService.CreateNotification(context.Background(), parent.AuthorID, authorID, comment.ID, "replied")
+			}
+		} else {
+			// Notify post author (we'd need post author ID here)
+			// For now, let's just use the repo to find post author
+			postAuthorID, err := s.repo.GetPostAuthorID(context.Background(), postID)
+			if err == nil {
+				_ = s.notifService.CreateNotification(context.Background(), postAuthorID, authorID, comment.ID, "commented")
+			}
+		}
+	}()
 
 	return res, nil
 }

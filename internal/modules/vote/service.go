@@ -4,17 +4,23 @@ import (
 	"context"
 
 	apperrors "devix-backend/internal/errors"
+	"devix-backend/internal/modules/notification"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
 type Service struct {
-	repo *Repository
-	log  zerolog.Logger
+	repo         *Repository
+	notifService *notification.Service
+	log          zerolog.Logger
 }
 
-func NewService(repo *Repository, log zerolog.Logger) *Service {
-	return &Service{repo: repo, log: log.With().Str("module", "vote").Logger()}
+func NewService(repo *Repository, notifService *notification.Service, log zerolog.Logger) *Service {
+	return &Service{
+		repo:         repo,
+		notifService: notifService,
+		log:          log.With().Str("module", "vote").Logger(),
+	}
 }
 
 func (s *Service) VoteOnPost(ctx context.Context, userID, postID uuid.UUID, voteType int) (int, error) {
@@ -26,6 +32,16 @@ func (s *Service) VoteOnPost(ctx context.Context, userID, postID uuid.UUID, vote
 	if err != nil {
 		return 0, apperrors.Internal(err)
 	}
+
+	if voteType > 0 {
+		go func() {
+			authorID, err := s.repo.GetPostAuthorID(context.Background(), postID)
+			if err == nil {
+				_ = s.notifService.CreateNotification(context.Background(), authorID, userID, postID, "post_voted")
+			}
+		}()
+	}
+
 	return count, nil
 }
 
@@ -38,6 +54,16 @@ func (s *Service) VoteOnComment(ctx context.Context, userID, commentID uuid.UUID
 	if err != nil {
 		return 0, apperrors.Internal(err)
 	}
+
+	if voteType > 0 {
+		go func() {
+			authorID, err := s.repo.GetCommentAuthorID(context.Background(), commentID)
+			if err == nil {
+				_ = s.notifService.CreateNotification(context.Background(), authorID, userID, commentID, "comment_voted")
+			}
+		}()
+	}
+
 	return count, nil
 }
 

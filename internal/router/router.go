@@ -4,8 +4,10 @@ import (
 	"devix-backend/internal/config"
 	"devix-backend/internal/middleware"
 	"devix-backend/internal/modules/auth"
+	"devix-backend/internal/modules/bookmark"
 	"devix-backend/internal/modules/comment"
 	"devix-backend/internal/modules/media"
+	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
@@ -22,9 +24,11 @@ type Handlers struct {
 	User    *user.Handler
 	Post    *post.Handler
 	Comment *comment.Handler
-	Tag     *tag.Handler
-	Vote    *vote.Handler
-	WS      *websocket.Handler
+	Tag          *tag.Handler
+	Vote         *vote.Handler
+	Notification *notification.Handler
+	Bookmark     *bookmark.Handler
+	WS           *websocket.Handler
 }
 
 func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, handlers *Handlers) *gin.Engine {
@@ -70,6 +74,8 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	comment.RegisterRoutes(v1, handlers.Comment, jwtManager)
 	tag.RegisterRoutes(v1, handlers.Tag)
 	vote.RegisterRoutes(v1, handlers.Vote, jwtManager)
+	notification.RegisterRoutes(v1, handlers.Notification, jwtManager)
+	bookmark.RegisterRoutes(v1, handlers.Bookmark, jwtManager)
 
 	return r
 }

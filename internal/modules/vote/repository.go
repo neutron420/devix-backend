@@ -91,3 +91,15 @@ func (r *Repository) RecalcCommentVoteCount(ctx context.Context, commentID uuid.
 	err = r.db.WithContext(ctx).Model(&models.Comment{}).Where("id = ?", commentID).Update("vote_count", sum).Error
 	return int(sum), err
 }
+
+func (r *Repository) GetPostAuthorID(ctx context.Context, postID uuid.UUID) (uuid.UUID, error) {
+	var p models.Post
+	err := r.db.WithContext(ctx).Select("author_id").First(&p, "id = ?", postID).Error
+	return p.AuthorID, err
+}
+
+func (r *Repository) GetCommentAuthorID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error) {
+	var c models.Comment
+	err := r.db.WithContext(ctx).Select("author_id").First(&c, "id = ?", commentID).Error
+	return c.AuthorID, err
+}

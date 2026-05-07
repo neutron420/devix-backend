@@ -81,3 +81,9 @@ func (r *Repository) GetParentDepth(ctx context.Context, parentID uuid.UUID) (in
 	}
 	return c.Depth, err
 }
+
+func (r *Repository) GetPostAuthorID(ctx context.Context, postID uuid.UUID) (uuid.UUID, error) {
+	var p models.Post
+	err := r.db.WithContext(ctx).Select("author_id").First(&p, "id = ?", postID).Error
+	return p.AuthorID, err
+}
