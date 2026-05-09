@@ -52,7 +52,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:${{ github.sha }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:latest
 
       - name: Update staging-ops
         env:
