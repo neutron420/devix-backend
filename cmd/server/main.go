@@ -12,6 +12,7 @@ import (
 	"devix-backend/internal/config"
 	"devix-backend/internal/database"
 	"devix-backend/internal/models"
+	"devix-backend/internal/modules/audit"
 	"devix-backend/internal/modules/auth"
 	"devix-backend/internal/modules/bookmark"
 	"devix-backend/internal/modules/comment"
@@ -65,6 +66,7 @@ func main() {
 		&models.Notification{},
 		&models.Bookmark{},
 		&models.Follow{},
+		&models.AuditLog{},
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("auto-migration failed")
@@ -141,6 +143,7 @@ func main() {
 	bookmarkService := bookmark.NewService(bookmarkRepo, postService, log)
 	commentService := comment.NewService(commentRepo, wsService, notificationService, log)
 	voteService := vote.NewService(voteRepo, notificationService, log)
+	auditService := audit.NewService(db, log)
 
 	handlers := &router.Handlers{
 		Auth:    auth.NewHandler(authService),
@@ -155,7 +158,7 @@ func main() {
 		WS:           wsmod.NewHandler(hub),
 	}
 
-	engine := router.Setup(cfg, log, jwtManager, handlers)
+	engine := router.Setup(cfg, log, jwtManager, handlers, redis, auditService)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

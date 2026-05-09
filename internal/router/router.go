@@ -1,15 +1,18 @@
 package router
 
 import (
+	"time"
+
 	"devix-backend/internal/config"
 	"devix-backend/internal/middleware"
+	"devix-backend/internal/modules/audit"
 	"devix-backend/internal/modules/auth"
 	"devix-backend/internal/modules/bookmark"
 	"devix-backend/internal/modules/comment"
+	"devix-backend/internal/modules/follow"
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
-	"devix-backend/internal/modules/follow"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
 	"devix-backend/internal/modules/vote"
@@ -17,6 +20,7 @@ import (
 	jwtpkg "devix-backend/internal/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
 
@@ -33,7 +37,7 @@ type Handlers struct {
 	WS           *websocket.Handler
 }
 
-func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, handlers *Handlers) *gin.Engine {
+func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, handlers *Handlers, redisClient *redis.Client, auditSvc *audit.Service) *gin.Engine {
 	if cfg.IsProd() {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -42,12 +46,20 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 
 	r.Use(gin.Recovery())
 
-	rateLimiter := middleware.NewInMemoryRateLimiter()
+	// Security Headers (CSP, HSTS, X-Frame-Options, etc.)
+	r.Use(middleware.SecurityHeaders())
+
+	// Abuse Detection
+	abuseDetector := middleware.NewAbuseDetector(redisClient, 50, 10*time.Minute)
+	r.Use(middleware.AbuseProtection(abuseDetector))
+
+	// Redis-backed Rate Limiting (falls back to in-memory if Redis is nil)
+	redisLimiter := middleware.NewRedisRateLimiter(redisClient)
 
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger(log))
 	r.Use(middleware.CORS(cfg.CORS.Origins))
-	r.Use(middleware.RateLimit(rateLimiter, cfg.Rate.Requests, cfg.Rate.Window))
+	r.Use(middleware.RedisRateLimit(redisLimiter, cfg.Rate.Requests, cfg.Rate.Window))
 
 	media.RegisterRoutes(r, cfg.Media.UploadDir)
 
@@ -68,7 +80,8 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	v1 := r.Group("/api/v1")
 
 	authGroup := v1.Group("")
-	authGroup.Use(middleware.AuthRateLimit(rateLimiter, cfg.Rate.AuthRequests, cfg.Rate.AuthWindow))
+	authGroup.Use(middleware.AuthRateLimitRedis(redisLimiter, cfg.Rate.AuthRequests, cfg.Rate.AuthWindow))
+	authGroup.Use(middleware.LoginProtection(redisClient))
 	auth.RegisterRoutes(authGroup, handlers.Auth)
 
 	user.RegisterRoutes(v1, handlers.User, jwtManager)
@@ -79,6 +92,8 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	notification.RegisterRoutes(v1, handlers.Notification, jwtManager)
 	bookmark.RegisterRoutes(v1, handlers.Bookmark, jwtManager)
 	follow.RegisterRoutes(v1, handlers.Follow, jwtManager)
+
+	_ = auditSvc
 
 	return r
 }
