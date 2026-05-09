@@ -6,14 +6,16 @@ import (
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/models"
+	"devix-backend/internal/pkg/cache"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
 type Service struct {
-	repo *Repository
-	log  zerolog.Logger
+	repo  *Repository
+	cache *cache.Cache
+	log   zerolog.Logger
 }
 
 func (s *Service) GetByUsername(ctx context.Context, username string) (*ProfileResponse, error) {
@@ -27,10 +29,11 @@ func (s *Service) GetByUsername(ctx context.Context, username string) (*ProfileR
 	return s.toResponse(user), nil
 }
 
-func NewService(repo *Repository, log zerolog.Logger) *Service {
+func NewService(repo *Repository, cache *cache.Cache, log zerolog.Logger) *Service {
 	return &Service{
-		repo: repo,
-		log:  log.With().Str("module", "user").Logger(),
+		repo:  repo,
+		cache: cache,
+		log:   log.With().Str("module", "user").Logger(),
 	}
 }
 
@@ -48,6 +51,12 @@ func (s *Service) GetMyProfile(ctx context.Context, userID uuid.UUID) (*ProfileR
 }
 
 func (s *Service) GetPublicProfile(ctx context.Context, username string) (*PublicProfileResponse, error) {
+	cacheKey := "users:profile:" + username
+	var cached PublicProfileResponse
+	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
+		return &cached, nil
+	}
+
 	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
 		s.log.Error().Err(err).Msg("failed to get user")
@@ -57,7 +66,7 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 		return nil, apperrors.NotFound("User")
 	}
 
-	return &PublicProfileResponse{
+	res := &PublicProfileResponse{
 		ID:          user.ID.String(),
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
@@ -66,7 +75,10 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 		PostCount:   user.PostCount,
 		Reputation:  user.Reputation,
 		CreatedAt:   user.CreatedAt.Format(time.RFC3339),
-	}, nil
+	}
+
+	_ = s.cache.Set(ctx, cacheKey, res, 10*time.Minute)
+	return res, nil
 }
 
 func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req *UpdateProfileRequest) (*ProfileResponse, error) {
@@ -85,6 +97,12 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req *Upda
 	if err := s.repo.UpdateProfile(ctx, userID, req); err != nil {
 		s.log.Error().Err(err).Msg("failed to update profile")
 		return nil, apperrors.Internal(err)
+	}
+
+	// Invalidate cache
+	user, _ := s.repo.GetByID(ctx, userID)
+	if user != nil {
+		_ = s.cache.Delete(ctx, "users:profile:"+user.Username)
 	}
 
 	return s.GetMyProfile(ctx, userID)
@@ -123,6 +141,12 @@ func (s *Service) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL 
 	if err := s.repo.UpdateAvatar(ctx, userID, avatarURL); err != nil {
 		s.log.Error().Err(err).Msg("failed to update avatar")
 		return nil, apperrors.Internal(err)
+	}
+
+	// Invalidate cache
+	user, _ := s.repo.GetByID(ctx, userID)
+	if user != nil {
+		_ = s.cache.Delete(ctx, "users:profile:"+user.Username)
 	}
 
 	return s.GetMyProfile(ctx, userID)

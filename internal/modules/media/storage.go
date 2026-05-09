@@ -76,6 +76,7 @@ type R2Storage struct {
 	client     *s3.Client
 	bucketName string
 	publicURL  string
+	cdnURL     string
 }
 
 func NewR2Storage(ctx context.Context, cfg config.R2Config) (*R2Storage, error) {
@@ -100,6 +101,7 @@ func NewR2Storage(ctx context.Context, cfg config.R2Config) (*R2Storage, error) 
 		client:     client,
 		bucketName: cfg.BucketName,
 		publicURL:  cfg.PublicURL,
+		cdnURL:     cfg.CDNURL,
 	}, nil
 }
 
@@ -136,5 +138,9 @@ func (s *R2Storage) Delete(ctx context.Context, path string) error {
 }
 
 func (s *R2Storage) GetURL(path string) string {
-	return s.publicURL + "/" + path
+	baseURL := s.publicURL
+	if s.cdnURL != "" {
+		baseURL = s.cdnURL
+	}
+	return baseURL + "/" + path
 }

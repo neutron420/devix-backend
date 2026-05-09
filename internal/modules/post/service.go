@@ -9,8 +9,10 @@ import (
 	"devix-backend/internal/models"
 	"devix-backend/internal/modules/media"
 	tagmod "devix-backend/internal/modules/tag"
+	"devix-backend/internal/pkg/cache"
 	"devix-backend/internal/pkg/pagination"
 	"devix-backend/internal/pkg/sanitize"
+	"devix-backend/internal/queue"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -20,14 +22,38 @@ type Service struct {
 	repo          *Repository
 	mediaService  *media.Service
 	tagService    *tagmod.Service
+	cache         *cache.Cache
+	queue         *queue.Queue
 	followService interface {
 		GetFollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	}
 	log zerolog.Logger
 }
 
-func NewService(repo *Repository, mediaService *media.Service, tagService *tagmod.Service, log zerolog.Logger) *Service {
-	return &Service{repo: repo, mediaService: mediaService, tagService: tagService, log: log.With().Str("module", "post").Logger()}
+func NewService(repo *Repository, mediaService *media.Service, tagService *tagmod.Service, cache *cache.Cache, q *queue.Queue, log zerolog.Logger) *Service {
+	s := &Service{
+		repo:         repo,
+		mediaService: mediaService,
+		tagService:   tagService,
+		cache:        cache,
+		queue:        q,
+		log:          log.With().Str("module", "post").Logger(),
+	}
+
+	// Register job handlers
+	if q != nil {
+		q.Register("increment_view_count", s.handleIncrementViewCount)
+	}
+
+	return s
+}
+
+func (s *Service) handleIncrementViewCount(ctx context.Context, payload interface{}) error {
+	id, ok := payload.(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("invalid payload type for increment_view_count")
+	}
+	return s.repo.IncrementViewCount(ctx, id)
 }
 
 func (s *Service) SetFollowService(fs interface {
@@ -85,10 +111,23 @@ func (s *Service) Create(ctx context.Context, authorID uuid.UUID, req *CreatePos
 		}
 	}
 	_ = s.repo.IncrementUserPostCount(ctx, authorID)
+
+	// Invalidate feed caches
+	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
+
 	return s.GetBySlug(ctx, slug)
 }
 
 func (s *Service) GetBySlug(ctx context.Context, slug string) (*PostResponse, error) {
+	cacheKey := fmt.Sprintf("posts:slug:%s", slug)
+	var cached PostResponse
+	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
+		if s.queue != nil {
+			s.queue.Enqueue(queue.Job{Type: "increment_view_count", Payload: uuid.MustParse(cached.ID)})
+		}
+		return &cached, nil
+	}
+
 	post, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, apperrors.Internal(err)
@@ -98,11 +137,22 @@ func (s *Service) GetBySlug(ctx context.Context, slug string) (*PostResponse, er
 	}
 	mediaList, _ := s.mediaService.GetPostMedia(ctx, post.ID)
 	post.Media = mediaList
-	go func() { _ = s.repo.IncrementViewCount(context.Background(), post.ID) }()
-	return s.toResponse(post), nil
+	if s.queue != nil {
+		s.queue.Enqueue(queue.Job{Type: "increment_view_count", Payload: post.ID})
+	}
+
+	res := s.toResponse(post)
+	_ = s.cache.Set(ctx, cacheKey, res, 30*time.Minute)
+	return res, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*PostResponse, error) {
+	cacheKey := fmt.Sprintf("posts:id:%s", id.String())
+	var cached PostResponse
+	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
+		return &cached, nil
+	}
+
 	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, apperrors.Internal(err)
@@ -114,10 +164,20 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*PostResponse, err
 	post.Tags = tags
 	mediaList, _ := s.mediaService.GetPostMedia(ctx, id)
 	post.Media = mediaList
-	return s.toResponse(post), nil
+
+	res := s.toResponse(post)
+	_ = s.cache.Set(ctx, cacheKey, res, 30*time.Minute)
+	return res, nil
 }
 
 func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse, error) {
+	// Generate cache key based on query
+	cacheKey := fmt.Sprintf("posts:feed:%s:%s:%s:%s:%s", query.Sort, query.Type, query.Tag, query.AuthorID, query.Cursor)
+	var cached PostListResponse
+	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
+		return &cached, nil
+	}
+
 	posts, hasMore, err := s.repo.List(ctx, query)
 	if err != nil {
 		return nil, apperrors.Internal(err)
@@ -133,7 +193,12 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 		last := posts[len(posts)-1]
 		cursor = pagination.EncodeCursor(last.CreatedAt, last.ID.String())
 	}
-	return &PostListResponse{Posts: responses, Cursor: cursor, HasMore: hasMore}, nil
+
+	res := &PostListResponse{Posts: responses, Cursor: cursor, HasMore: hasMore}
+	// Cache feeds for shorter time
+	_ = s.cache.Set(ctx, cacheKey, res, 5*time.Minute)
+
+	return res, nil
 }
 
 func (s *Service) ListFollowing(ctx context.Context, userID uuid.UUID, query FeedQuery) (*PostListResponse, error) {
@@ -189,6 +254,12 @@ func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *Upd
 			_ = s.repo.SetPostTags(ctx, postID, tagIDs)
 		}
 	}
+
+	// Invalidate caches
+	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:id:%s", postID.String()))
+	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:slug:%s", post.Slug))
+	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
+
 	return s.GetByID(ctx, postID)
 }
 
@@ -207,6 +278,12 @@ func (s *Service) Delete(ctx context.Context, postID, userID uuid.UUID, userRole
 		return apperrors.Internal(err)
 	}
 	_ = s.repo.DecrementUserPostCount(ctx, post.AuthorID)
+
+	// Invalidate caches
+	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:id:%s", postID.String()))
+	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:slug:%s", post.Slug))
+	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
+
 	return nil
 }
 

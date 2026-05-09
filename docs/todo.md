@@ -5,7 +5,7 @@
    1.2. Bookmark and save posts functionality
    1.3. Follow system (Followers/Following relationships + following-only feed)
    1.4. Feed ranking algorithm (Mix of recent, popular, and following content)
-   1.5. Extended user settings (Profile management, preferences) -->
+   1.5. Extended user settings (Profile management, preferences) // Done -->
 
 2. Phase 2 - Performance and Optimization
    2.1. Advanced Redis caching (Feed, post, and user profile caching)

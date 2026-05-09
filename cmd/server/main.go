@@ -23,6 +23,7 @@ import (
 	"devix-backend/internal/modules/user"
 	"devix-backend/internal/modules/vote"
 	wsmod "devix-backend/internal/modules/websocket"
+	"devix-backend/internal/pkg/cache"
 	jwtpkg "devix-backend/internal/pkg/jwt"
 	"devix-backend/internal/pkg/logger"
 	"devix-backend/internal/queue"
@@ -79,6 +80,8 @@ func main() {
 		log.Info().Msg("Redis not configured — running without cache")
 	}
 
+	appCache := cache.New(redis)
+
 	validator.Setup()
 
 	jwtManager := jwtpkg.NewManager(
@@ -122,9 +125,9 @@ func main() {
 	wsService := wsmod.NewService(hub, log)
 	authService := auth.NewService(authRepo, jwtManager, log)
 	mediaService := media.NewService(mediaRepo, storage, cfg.Media, log)
-	userService := user.NewService(userRepo, log)
+	userService := user.NewService(userRepo, appCache, log)
 	tagService := tag.NewService(tagRepo, log)
-	postService := post.NewService(postRepo, mediaService, tagService, log)
+	postService := post.NewService(postRepo, mediaService, tagService, appCache, jobQueue, log)
 	notificationService := notification.NewService(notificationRepo, log)
 	followService := follow.NewService(followRepo, userService, notificationService, log)
 	postService.SetFollowService(followService)

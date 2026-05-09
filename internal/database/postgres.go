@@ -12,7 +12,7 @@ import (
 
 func NewGormDB(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	gormConfig := &gorm.Config{
-		PrepareStmt: true,
+		PrepareStmt: false,
 	}
 
 	db, err := gorm.Open(postgres.Open(cfg.URL), gormConfig)

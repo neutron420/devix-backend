@@ -65,6 +65,7 @@ type R2Config struct {
 	SecretKey  string
 	BucketName string
 	PublicURL  string
+	CDNURL     string
 	Endpoint   string
 }
 
@@ -123,6 +124,7 @@ func Load() (*Config, error) {
 			SecretKey:  getEnv("R2_SECRET_KEY", ""),
 			BucketName: getEnv("R2_BUCKET_NAME", ""),
 			PublicURL:  getEnv("R2_PUBLIC_URL", ""),
+			CDNURL:     getEnv("R2_CDN_URL", ""),
 			Endpoint:   getEnv("R2_ENDPOINT", ""),
 		},
 		CORS: CORSConfig{
