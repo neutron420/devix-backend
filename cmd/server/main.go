@@ -15,6 +15,7 @@ import (
 	"devix-backend/internal/modules/auth"
 	"devix-backend/internal/modules/bookmark"
 	"devix-backend/internal/modules/comment"
+	"devix-backend/internal/modules/follow"
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
@@ -61,6 +62,7 @@ func main() {
 		&models.RefreshToken{},
 		&models.Notification{},
 		&models.Bookmark{},
+		&models.Follow{},
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("auto-migration failed")
@@ -115,6 +117,7 @@ func main() {
 	voteRepo := vote.NewRepository(db)
 	notificationRepo := notification.NewRepository(db)
 	bookmarkRepo := bookmark.NewRepository(db)
+	followRepo := follow.NewRepository(db)
 
 	wsService := wsmod.NewService(hub, log)
 	authService := auth.NewService(authRepo, jwtManager, log)
@@ -123,6 +126,8 @@ func main() {
 	tagService := tag.NewService(tagRepo, log)
 	postService := post.NewService(postRepo, mediaService, tagService, log)
 	notificationService := notification.NewService(notificationRepo, log)
+	followService := follow.NewService(followRepo, userService, notificationService, log)
+	postService.SetFollowService(followService)
 	bookmarkService := bookmark.NewService(bookmarkRepo, postService, log)
 	commentService := comment.NewService(commentRepo, wsService, notificationService, log)
 	voteService := vote.NewService(voteRepo, notificationService, log)
@@ -136,6 +141,7 @@ func main() {
 		Vote:         vote.NewHandler(voteService),
 		Notification: notification.NewHandler(notificationService),
 		Bookmark:     bookmark.NewHandler(bookmarkService),
+		Follow:       follow.NewHandler(followService),
 		WS:           wsmod.NewHandler(hub),
 	}
 

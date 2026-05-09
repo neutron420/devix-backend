@@ -9,6 +9,7 @@ import (
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
+	"devix-backend/internal/modules/follow"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
 	"devix-backend/internal/modules/vote"
@@ -28,6 +29,7 @@ type Handlers struct {
 	Vote         *vote.Handler
 	Notification *notification.Handler
 	Bookmark     *bookmark.Handler
+	Follow       *follow.Handler
 	WS           *websocket.Handler
 }
 
@@ -76,6 +78,7 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	vote.RegisterRoutes(v1, handlers.Vote, jwtManager)
 	notification.RegisterRoutes(v1, handlers.Notification, jwtManager)
 	bookmark.RegisterRoutes(v1, handlers.Bookmark, jwtManager)
+	follow.RegisterRoutes(v1, handlers.Follow, jwtManager)
 
 	return r
 }

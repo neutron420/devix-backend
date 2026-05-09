@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	apperrors "devix-backend/internal/errors"
+	"devix-backend/internal/middleware"
 	"devix-backend/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,11 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) GetNotifications(c *gin.Context) {
-	userID := c.MustGet("userId").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
@@ -33,7 +38,11 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 }
 
 func (h *Handler) MarkAsRead(c *gin.Context) {
-	userID := c.MustGet("userId").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
 	notificationID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid notification ID"))
@@ -49,7 +58,11 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 }
 
 func (h *Handler) MarkAllAsRead(c *gin.Context) {
-	userID := c.MustGet("userId").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
 
 	if err := h.service.MarkAllAsRead(c.Request.Context(), userID); err != nil {
 		response.Error(c, apperrors.Internal(err))

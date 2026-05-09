@@ -71,6 +71,30 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	response.OK(c, profile)
 }
 
+func (h *Handler) UpdateSettings(c *gin.Context) {
+	h.UpdateMe(c) // Reusing the same logic for now as it covers all fields
+}
+
+func (h *Handler) DeleteMe(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
+
+	if err := h.service.DeleteAccount(c.Request.Context(), userID); err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+
+	response.NoContent(c)
+}
+
 func (h *Handler) UpdateAvatar(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {

@@ -17,4 +17,5 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Ma
 		posts.POST("/:id/media", middleware.Auth(jwtManager), handler.UploadMedia)
 	}
 	rg.GET("/feed", handler.List)
+	rg.GET("/feed/following", middleware.Auth(jwtManager), handler.ListFollowing)
 }

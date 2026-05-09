@@ -17,14 +17,23 @@ import (
 )
 
 type Service struct {
-	repo         *Repository
-	mediaService *media.Service
-	tagService   *tagmod.Service
-	log          zerolog.Logger
+	repo          *Repository
+	mediaService  *media.Service
+	tagService    *tagmod.Service
+	followService interface {
+		GetFollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	}
+	log zerolog.Logger
 }
 
 func NewService(repo *Repository, mediaService *media.Service, tagService *tagmod.Service, log zerolog.Logger) *Service {
 	return &Service{repo: repo, mediaService: mediaService, tagService: tagService, log: log.With().Str("module", "post").Logger()}
+}
+
+func (s *Service) SetFollowService(fs interface {
+	GetFollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+}) {
+	s.followService = fs
 }
 
 func (s *Service) Create(ctx context.Context, authorID uuid.UUID, req *CreatePostRequest) (*PostResponse, error) {
@@ -125,6 +134,27 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 		cursor = pagination.EncodeCursor(last.CreatedAt, last.ID.String())
 	}
 	return &PostListResponse{Posts: responses, Cursor: cursor, HasMore: hasMore}, nil
+}
+
+func (s *Service) ListFollowing(ctx context.Context, userID uuid.UUID, query FeedQuery) (*PostListResponse, error) {
+	if s.followService == nil {
+		return nil, apperrors.Internal(fmt.Errorf("follow service not initialized"))
+	}
+	followingIDs, err := s.followService.GetFollowingIDs(ctx, userID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if len(followingIDs) == 0 {
+		return &PostListResponse{Posts: []PostResponse{}, HasMore: false}, nil
+	}
+
+	authorIDs := make([]string, len(followingIDs))
+	for i, id := range followingIDs {
+		authorIDs[i] = id.String()
+	}
+	query.AuthorIDs = authorIDs
+
+	return s.List(ctx, query)
 }
 
 func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) (*PostResponse, error) {

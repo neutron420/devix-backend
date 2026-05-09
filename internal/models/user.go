@@ -20,6 +20,11 @@ type User struct {
 	PostCount    int       `gorm:"default:0"`
 	Reputation   int       `gorm:"default:0"`
 	LastLoginAt  *time.Time
+	WebsiteURL   string `gorm:"size:255"`
+	GitHubURL    string `gorm:"size:255"`
+	TwitterURL   string `gorm:"size:255"`
+	Location     string `gorm:"size:100"`
+	Preferences  string `gorm:"type:text;default:'{}'"` // JSON string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`

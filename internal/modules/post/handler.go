@@ -60,6 +60,30 @@ func (h *Handler) GetBySlug(c *gin.Context) {
 	response.OK(c, result)
 }
 
+func (h *Handler) ListFollowing(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
+	var query FeedQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Error(c, apperrors.BadRequest("Invalid query parameters"))
+		return
+	}
+	result, err := h.service.ListFollowing(c.Request.Context(), userID, query)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, HasMore: result.HasMore})
+}
+
 func (h *Handler) List(c *gin.Context) {
 	var query FeedQuery
 	if err := c.ShouldBindQuery(&query); err != nil {

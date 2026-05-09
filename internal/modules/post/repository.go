@@ -78,6 +78,10 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 		db = db.Where("posts.author_id = ?", query.AuthorID)
 	}
 
+	if len(query.AuthorIDs) > 0 {
+		db = db.Where("posts.author_id IN ?", query.AuthorIDs)
+	}
+
 	if query.Search != "" {
 
 		db = db.Where("to_tsvector('english', posts.title || ' ' || posts.content) @@ plainto_tsquery('english', ?)", query.Search)
@@ -96,7 +100,8 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	}
 
 	if query.Sort == "trending" {
-		db = db.Order("vote_count desc, view_count desc, created_at desc")
+		// Trending Score: (Votes * 0.7) + (Comments * 0.3) - (HoursSinceCreation * 0.1)
+		db = db.Order("((vote_count * 0.7) + (comment_count * 0.3) - (EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 * 0.1)) DESC")
 	} else {
 		db = db.Order("created_at desc, id desc")
 	}

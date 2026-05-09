@@ -22,9 +22,10 @@ type FeedQuery struct {
 	Limit    int    `form:"limit" binding:"omitempty,min=1,max=100"`
 	Type     string `form:"type" binding:"omitempty,post_type"`
 	Tag      string `form:"tag"`
-	AuthorID string `form:"author_id"`
-	Search   string `form:"q"`
-	Sort     string `form:"sort" binding:"omitempty,oneof=latest trending"`
+	AuthorID  string `form:"author_id"`
+	AuthorIDs []string
+	Search    string `form:"q"`
+	Sort      string `form:"sort" binding:"omitempty,oneof=latest trending"`
 }
 
 type PostResponse struct {

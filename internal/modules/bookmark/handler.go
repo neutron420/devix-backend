@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	apperrors "devix-backend/internal/errors"
+	"devix-backend/internal/middleware"
 	"devix-backend/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,11 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) ToggleBookmark(c *gin.Context) {
-	userID := c.MustGet("userId").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
 	postID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid post ID"))
@@ -41,7 +46,11 @@ func (h *Handler) ToggleBookmark(c *gin.Context) {
 }
 
 func (h *Handler) ListBookmarks(c *gin.Context) {
-	userID := c.MustGet("userId").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
 	cursor := c.Query("cursor")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 

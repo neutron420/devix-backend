@@ -47,18 +47,37 @@ func (r *Repository) Update(ctx context.Context, user *models.User) error {
 	return r.db.WithContext(ctx).Save(user).Error
 }
 
-func (r *Repository) UpdateProfile(ctx context.Context, userID uuid.UUID, displayName, bio, username *string) error {
+func (r *Repository) UpdateProfile(ctx context.Context, userID uuid.UUID, req *UpdateProfileRequest) error {
 	updates := make(map[string]interface{})
-	if displayName != nil {
-		updates["display_name"] = *displayName
+	if req.DisplayName != nil {
+		updates["display_name"] = *req.DisplayName
 	}
-	if bio != nil {
-		updates["bio"] = *bio
+	if req.Bio != nil {
+		updates["bio"] = *req.Bio
 	}
-	if username != nil {
-		updates["username"] = *username
+	if req.Username != nil {
+		updates["username"] = *req.Username
+	}
+	if req.WebsiteURL != nil {
+		updates["website_url"] = *req.WebsiteURL
+	}
+	if req.GitHubURL != nil {
+		updates["github_url"] = *req.GitHubURL
+	}
+	if req.TwitterURL != nil {
+		updates["twitter_url"] = *req.TwitterURL
+	}
+	if req.Location != nil {
+		updates["location"] = *req.Location
+	}
+	if req.Preferences != nil {
+		updates["preferences"] = *req.Preferences
 	}
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
+}
+
+func (r *Repository) Delete(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.User{}, userID).Error
 }
 
 func (r *Repository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
