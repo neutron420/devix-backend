@@ -55,3 +55,22 @@ func (r *Repository) Create(ctx context.Context, name string, description *strin
 	err := r.db.WithContext(ctx).Create(t).Error
 	return t, err
 }
+
+func (r *Repository) GetTrending(ctx context.Context, limit int, since time.Duration) ([]models.Tag, error) {
+	var tags []models.Tag
+	sinceTime := time.Now().Add(-since)
+
+	err := r.db.WithContext(ctx).
+		Table("tags").
+		Select("tags.*, COUNT(post_tags.post_id) as recent_count").
+		Joins("JOIN post_tags ON post_tags.tag_id = tags.id").
+		Joins("JOIN posts ON posts.id = post_tags.post_id").
+		Where("posts.created_at >= ?", sinceTime).
+		Group("tags.id").
+		Order("recent_count DESC").
+		Limit(limit).
+		Find(&tags).Error
+
+	return tags, err
+}
+

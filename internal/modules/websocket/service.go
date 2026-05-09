@@ -33,3 +33,19 @@ func (s *Service) NotifyUser(ctx context.Context, userID uuid.UUID, eventType st
 		Payload: payload,
 	})
 }
+
+func (s *Service) NotifyRoom(ctx context.Context, roomName string, eventType string, payload interface{}) {
+	s.log.Debug().Str("type", eventType).Str("room", roomName).Msg("notifying room via websocket")
+	s.hub.NotifyRoom(roomName, Message{
+		Type:    eventType,
+		Payload: payload,
+	})
+}
+
+func (s *Service) JoinRoom(client *Client, roomName string) {
+	s.hub.JoinRoom(client, roomName)
+}
+
+func (s *Service) LeaveRoom(client *Client, roomName string) {
+	s.hub.LeaveRoom(client, roomName)
+}

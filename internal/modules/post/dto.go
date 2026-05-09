@@ -25,10 +25,11 @@ type FeedQuery struct {
 	Type     string `form:"type" binding:"omitempty,post_type"`
 	Tag      string `form:"tag"`
 	AuthorID  string `form:"author_id"`
-	AuthorIDs     []string
-	RequestUserID uuid.UUID
-	Search        string `form:"q"`
-	Sort          string `form:"sort" binding:"omitempty,oneof=latest trending"`
+	AuthorIDs        []string
+	ExcludeAuthorIDs []string
+	RequestUserID    uuid.UUID
+	Search           string `form:"q"`
+	Sort             string `form:"sort" binding:"omitempty,oneof=latest trending"`
 }
 
 type PostResponse struct {

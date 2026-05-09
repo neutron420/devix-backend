@@ -61,6 +61,21 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*models.Post, e
 	return &post, err
 }
 
+func (r *Repository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.Post, bool, error) {
+	var posts []models.Post
+	if len(ids) == 0 {
+		return posts, false, nil
+	}
+
+	err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Order("created_at DESC").
+		Find(&posts).Error
+
+	return posts, false, err
+}
+
+
 func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, bool, error) {
 	limit := pagination.NormalizeLimit(query.Limit)
 	var posts []models.Post
@@ -80,6 +95,10 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 
 	if len(query.AuthorIDs) > 0 {
 		db = db.Where("posts.author_id IN ?", query.AuthorIDs)
+	}
+
+	if len(query.ExcludeAuthorIDs) > 0 {
+		db = db.Where("posts.author_id NOT IN ?", query.ExcludeAuthorIDs)
 	}
 
 	if query.Search != "" {

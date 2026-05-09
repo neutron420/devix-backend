@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
@@ -37,7 +38,7 @@ func (c *Client) ReadPump() {
 	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.Conn.SetPongHandler(func(string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, _, err := c.Conn.ReadMessage()
+		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
@@ -45,6 +46,40 @@ func (c *Client) ReadPump() {
 			break
 		}
 
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err != nil {
+			continue
+		}
+
+		switch msg.Type {
+		case "join_room":
+			roomName, ok := msg.Payload.(string)
+			if ok {
+				c.Hub.JoinRoom(c, roomName)
+			}
+		case "leave_room":
+			roomName, ok := msg.Payload.(string)
+			if ok {
+				c.Hub.LeaveRoom(c, roomName)
+			}
+		case "typing":
+			// Payload should contain room_name and status (true/false)
+			payload, ok := msg.Payload.(map[string]interface{})
+			if ok {
+				roomName, _ := payload["room_name"].(string)
+				if roomName != "" {
+					// Relay typing event to room
+					c.Hub.NotifyRoom(roomName, Message{
+						Type: "typing",
+						Payload: map[string]interface{}{
+							"user_id":   c.UserID,
+							"room_name": roomName,
+							"status":    payload["status"],
+						},
+					})
+				}
+			}
+		}
 	}
 }
 

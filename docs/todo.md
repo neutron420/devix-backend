@@ -6,25 +6,25 @@
    1.3. Follow system (Followers/Following relationships + following-only feed)
    1.4. Feed ranking algorithm (Mix of recent, popular, and following content)
    1.5. Extended user settings (Profile management, preferences) // Done -->
-
+<!-- 
 2. Phase 2 - Performance and Optimization
    2.1. Advanced Redis caching (Feed, post, and user profile caching)
    2.2. Query optimization (Strategic indexing, join optimization, slow query resolution)
    2.3. Cursor pagination improvements (Edge case handling and consistency)
    2.4. CDN integration for global media delivery
-   2.5. Background job processing for heavy computational tasks
+   2.5. Background job processing for heavy computational tasks //Done -->
 
-3. Phase 3 - Real-Time Enhancements
+<!-- 3. Phase 3 - Real-Time Enhancements
    3.1. Real-time notifications (Fully integrated with database persistence)
    3.2. Live comment updates (Post-level WebSocket subscriptions)
    3.3. Typing indicators for active discussions
-   3.4. WebSocket scaling using Redis Pub/Sub
+   3.4. WebSocket scaling using Redis Pub/Sub //Done -->
 
-4. Phase 4 - Search and Discovery
+<!-- 4. Phase 4 - Search and Discovery
    4.1. Elasticsearch integration (Full-text search, ranking, and relevance tuning)
    4.2. Advanced search filters and discovery algorithms
    4.3. Trending tags and popular posts system
-   4.4. Explore feed for content discovery
+   4.4. Explore feed for content discovery //Done -->
 
 5. Phase 5 - Security and Reliability
    5.1. Advanced rate limiting (User-based and IP-based)

@@ -19,6 +19,7 @@ import (
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
+	"devix-backend/internal/modules/search"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
 	"devix-backend/internal/modules/vote"
@@ -80,6 +81,11 @@ func main() {
 		log.Info().Msg("Redis not configured — running without cache")
 	}
 
+	esClient, err := search.NewClient(cfg.Elasticsearch.URL, log)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to connect to elasticsearch, search features will be limited")
+	}
+
 	appCache := cache.New(redis)
 
 	validator.Setup()
@@ -108,8 +114,8 @@ func main() {
 	jobQueue.Start(ctx, 3)
 	defer jobQueue.Close()
 
-	hub := wsmod.NewHub()
-	go hub.Run()
+	hub := wsmod.NewHub(redis, log)
+	go hub.Run(ctx)
 
 	authRepo := auth.NewRepository(db)
 	userRepo := user.NewRepository(db)
@@ -123,12 +129,13 @@ func main() {
 	followRepo := follow.NewRepository(db)
 
 	wsService := wsmod.NewService(hub, log)
+	searchService := search.NewService(esClient, log)
 	authService := auth.NewService(authRepo, jwtManager, log)
 	mediaService := media.NewService(mediaRepo, storage, cfg.Media, log)
 	userService := user.NewService(userRepo, appCache, log)
-	tagService := tag.NewService(tagRepo, log)
-	postService := post.NewService(postRepo, mediaService, tagService, appCache, jobQueue, log)
-	notificationService := notification.NewService(notificationRepo, log)
+	tagService := tag.NewService(tagRepo, appCache, log)
+	postService := post.NewService(postRepo, mediaService, tagService, searchService, appCache, jobQueue, log)
+	notificationService := notification.NewService(notificationRepo, wsService, log)
 	followService := follow.NewService(followRepo, userService, notificationService, log)
 	postService.SetFollowService(followService)
 	bookmarkService := bookmark.NewService(bookmarkRepo, postService, log)

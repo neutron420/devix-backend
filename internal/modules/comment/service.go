@@ -65,7 +65,7 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 		ID: comment.ID.String(), PostID: postID.String(), Content: content, Depth: depth,
 		CreatedAt: now.Format(time.RFC3339), UpdatedAt: now.Format(time.RFC3339),
 	}
-	s.wsService.BroadcastEvent(ctx, "new_comment", res)
+	s.wsService.NotifyRoom(ctx, "post:"+postID.String(), "new_comment", res)
 
 	// Trigger Notification
 	go func() {

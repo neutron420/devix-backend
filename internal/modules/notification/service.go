@@ -3,6 +3,7 @@ package notification
 import (
 	"context"
 	"devix-backend/internal/models"
+	"devix-backend/internal/modules/websocket"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,14 +11,16 @@ import (
 )
 
 type Service struct {
-	repo *Repository
-	log  zerolog.Logger
+	repo      *Repository
+	wsService *websocket.Service
+	log       zerolog.Logger
 }
 
-func NewService(repo *Repository, log zerolog.Logger) *Service {
+func NewService(repo *Repository, wsService *websocket.Service, log zerolog.Logger) *Service {
 	return &Service{
-		repo: repo,
-		log:  log.With().Str("module", "notification").Logger(),
+		repo:      repo,
+		wsService: wsService,
+		log:       log.With().Str("module", "notification").Logger(),
 	}
 }
 
@@ -64,7 +67,16 @@ func (s *Service) CreateNotification(ctx context.Context, userID, actorID, targe
 		CreatedAt: time.Now(),
 	}
 
-	return s.repo.Create(ctx, notification)
+	if err := s.repo.Create(ctx, notification); err != nil {
+		return err
+	}
+
+	// Trigger real-time update
+	if s.wsService != nil {
+		s.wsService.NotifyUser(ctx, userID, "new_notification", s.toResponse(notification))
+	}
+
+	return nil
 }
 
 func (s *Service) MarkAsRead(ctx context.Context, userID, notificationID uuid.UUID) error {

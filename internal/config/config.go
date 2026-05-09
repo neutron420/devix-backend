@@ -11,14 +11,19 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Media    MediaConfig
-	R2       R2Config
-	CORS     CORSConfig
-	Rate     RateLimitConfig
+	Server        ServerConfig
+	Database      DatabaseConfig
+	Redis         RedisConfig
+	Elasticsearch ElasticsearchConfig
+	JWT           JWTConfig
+	Media         MediaConfig
+	R2            R2Config
+	CORS          CORSConfig
+	Rate          RateLimitConfig
+}
+
+type ElasticsearchConfig struct {
+	URL string
 }
 
 type ServerConfig struct {
@@ -126,6 +131,9 @@ func Load() (*Config, error) {
 			PublicURL:  getEnv("R2_PUBLIC_URL", ""),
 			CDNURL:     getEnv("R2_CDN_URL", ""),
 			Endpoint:   getEnv("R2_ENDPOINT", ""),
+		},
+		Elasticsearch: ElasticsearchConfig{
+			URL: getEnv("ELASTICSEARCH_URL", ""),
 		},
 		CORS: CORSConfig{
 			Origins: getSliceEnv("CORS_ORIGINS", []string{"http://localhost:3000"}),

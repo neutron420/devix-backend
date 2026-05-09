@@ -29,3 +29,18 @@ func (h *Handler) GetAll(c *gin.Context) {
 	}
 	response.OK(c, result)
 }
+
+func (h *Handler) GetTrending(c *gin.Context) {
+	result, err := h.service.GetTrending(c.Request.Context(), 10)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OK(c, result)
+}
+

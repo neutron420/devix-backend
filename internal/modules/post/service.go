@@ -12,6 +12,7 @@ import (
 	"devix-backend/internal/pkg/cache"
 	"devix-backend/internal/pkg/pagination"
 	"devix-backend/internal/pkg/sanitize"
+	"devix-backend/internal/modules/search"
 	"devix-backend/internal/queue"
 
 	"github.com/google/uuid"
@@ -27,25 +28,57 @@ type Service struct {
 	followService interface {
 		GetFollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	}
-	log zerolog.Logger
+	searchService *search.Service
+	log           zerolog.Logger
 }
 
-func NewService(repo *Repository, mediaService *media.Service, tagService *tagmod.Service, cache *cache.Cache, q *queue.Queue, log zerolog.Logger) *Service {
+func NewService(repo *Repository, mediaService *media.Service, tagService *tagmod.Service, searchService *search.Service, cache *cache.Cache, q *queue.Queue, log zerolog.Logger) *Service {
 	s := &Service{
-		repo:         repo,
-		mediaService: mediaService,
-		tagService:   tagService,
-		cache:        cache,
-		queue:        q,
-		log:          log.With().Str("module", "post").Logger(),
+		repo:          repo,
+		mediaService:  mediaService,
+		tagService:    tagService,
+		searchService: searchService,
+		cache:         cache,
+		queue:         q,
+		log:           log.With().Str("module", "post").Logger(),
 	}
 
 	// Register job handlers
 	if q != nil {
 		q.Register("increment_view_count", s.handleIncrementViewCount)
+		q.Register("sync_post_search", s.handleSyncPostSearch)
 	}
 
 	return s
+}
+
+func (s *Service) handleSyncPostSearch(ctx context.Context, payload interface{}) error {
+	postID, ok := payload.(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("invalid payload type for sync_post_search")
+	}
+
+	post, err := s.repo.GetByID(ctx, postID)
+	if err != nil || post == nil {
+		return err
+	}
+
+	tags, _ := s.repo.GetPostTags(ctx, postID)
+
+	tagNames := make([]string, len(tags))
+	for i, t := range tags {
+		tagNames[i] = t.Name
+	}
+
+	return s.searchService.IndexPost(ctx, search.IndexedPost{
+		ID:        post.ID.String(),
+		Title:     post.Title,
+		Content:   post.Content,
+		Author:    post.AuthorID.String(),
+		PostType:  string(post.PostType),
+		Tags:      tagNames,
+		CreatedAt: post.CreatedAt.UnixMilli(),
+	})
 }
 
 func (s *Service) handleIncrementViewCount(ctx context.Context, payload interface{}) error {
@@ -115,6 +148,11 @@ func (s *Service) Create(ctx context.Context, authorID uuid.UUID, req *CreatePos
 	// Invalidate feed caches
 	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
 
+	// Sync to Search (Elasticsearch) via Background Queue
+	if s.queue != nil {
+		s.queue.Enqueue(queue.Job{Type: "sync_post_search", Payload: post.ID})
+	}
+
 	return s.GetBySlug(ctx, slug)
 }
 
@@ -178,6 +216,27 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 		return &cached, nil
 	}
 
+	// If it's a search query, use Elasticsearch
+	if query.Search != "" && s.searchService != nil {
+		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit)
+		if err == nil && len(esIDs) > 0 {
+			query.AuthorIDs = make([]string, len(esIDs))
+			// This is a hack to use the existing List method with IDs from ES
+			// But since we want to maintain pagination/sorting, we'll need to handle it better.
+			// For now, let's just fetch these specific posts.
+			posts, _, err := s.repo.GetByIDs(ctx, esIDs)
+			if err == nil {
+				responses := make([]PostResponse, 0, len(posts))
+				for _, p := range posts {
+					tags, _ := s.repo.GetPostTags(ctx, p.ID)
+					p.Tags = tags
+					responses = append(responses, *s.toResponse(&p))
+				}
+				return &PostListResponse{Posts: responses, HasMore: false}, nil
+			}
+		}
+	}
+
 	posts, hasMore, err := s.repo.List(ctx, query)
 	if err != nil {
 		return nil, apperrors.Internal(err)
@@ -222,6 +281,34 @@ func (s *Service) ListFollowing(ctx context.Context, userID uuid.UUID, query Fee
 	return s.List(ctx, query)
 }
 
+func (s *Service) ListExplore(ctx context.Context, userID uuid.UUID, query FeedQuery) (*PostListResponse, error) {
+	cacheKey := fmt.Sprintf("posts:explore:%s:%s:%s:%s", userID.String(), query.Type, query.Tag, query.Cursor)
+	var cached PostListResponse
+	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
+		return &cached, nil
+	}
+
+	if userID != uuid.Nil && s.followService != nil {
+		followingIDs, err := s.followService.GetFollowingIDs(ctx, userID)
+		if err == nil && len(followingIDs) > 0 {
+			excludeIDs := make([]string, len(followingIDs))
+			for i, id := range followingIDs {
+				excludeIDs[i] = id.String()
+			}
+			query.ExcludeAuthorIDs = excludeIDs
+		}
+	}
+
+	query.Sort = "trending"
+	res, err := s.List(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = s.cache.Set(ctx, cacheKey, res, 10*time.Minute)
+	return res, nil
+}
+
 func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) (*PostResponse, error) {
 	post, err := s.repo.GetByID(ctx, postID)
 	if err != nil {
@@ -260,6 +347,11 @@ func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *Upd
 	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:slug:%s", post.Slug))
 	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
 
+	// Sync to Search
+	if s.queue != nil {
+		s.queue.Enqueue(queue.Job{Type: "sync_post_search", Payload: postID})
+	}
+
 	return s.GetByID(ctx, postID)
 }
 
@@ -283,6 +375,11 @@ func (s *Service) Delete(ctx context.Context, postID, userID uuid.UUID, userRole
 	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:id:%s", postID.String()))
 	_ = s.cache.Delete(ctx, fmt.Sprintf("posts:slug:%s", post.Slug))
 	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
+
+	// Sync to Search (Delete)
+	if s.searchService != nil {
+		_ = s.searchService.DeletePost(ctx, postID.String())
+	}
 
 	return nil
 }

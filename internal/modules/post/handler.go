@@ -109,6 +109,32 @@ func (h *Handler) List(c *gin.Context) {
 	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, HasMore: result.HasMore})
 }
 
+func (h *Handler) ListExplore(c *gin.Context) {
+	var query FeedQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Error(c, apperrors.BadRequest("Invalid query parameters"))
+		return
+	}
+
+	var userID uuid.UUID
+	if uid, ok := middleware.GetUserID(c); ok {
+		userID = uid
+	}
+
+	result, err := h.service.ListExplore(c.Request.Context(), userID, query)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, HasMore: result.HasMore})
+}
+
+
 func (h *Handler) Update(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {

@@ -19,4 +19,5 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Ma
 	}
 	rg.GET("/feed", middleware.OptionalAuth(jwtManager), handler.List)
 	rg.GET("/feed/following", middleware.Auth(jwtManager), handler.ListFollowing)
+	rg.GET("/feed/explore", middleware.OptionalAuth(jwtManager), handler.ListExplore)
 }
