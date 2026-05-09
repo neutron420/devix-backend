@@ -1,0 +1,78 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [ main, production ]
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build check
+        run: go build ./...
+
+  build-and-deploy:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Env
+        id: env_vars
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "image_name=devix" >> $GITHUB_OUTPUT
+            echo "ops_path=prod/backend" >> $GITHUB_OUTPUT
+          else
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "image_name=devix-staging" >> $GITHUB_OUTPUT
+            echo "ops_path=staging/backend" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:${{ github.sha }}
+
+      - name: Update staging-ops
+        env:
+          PAT: ${{ secrets.STAGING_OPS_PAT }}
+        run: |
+          git clone https://x-access-token:${PAT}@github.com/${{ github.repository_owner }}/staging-ops.git
+          cd staging-ops
+          
+          FILE_PATH="${{ steps.env_vars.outputs.ops_path }}/deployment.yml"
+          
+          if [ -f "$FILE_PATH" ]; then
+            # Update image tag in the deployment file
+            sed -i "s|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:${{ github.sha }}|g" "$FILE_PATH"
+            
+            git config user.name "GitHub Actions Bot"
+            git config user.email "actions@github.com"
+            git add "$FILE_PATH"
+            git commit -m "chore(${{ steps.env_vars.outputs.env }}): update image to ${{ github.sha }}"
+            git push origin main
+          else
+            echo "Error: $FILE_PATH not found in staging-ops repo!"
+            exit 1
+          fi

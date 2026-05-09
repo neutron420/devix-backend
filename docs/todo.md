@@ -26,19 +26,19 @@
    4.3. Trending tags and popular posts system
    4.4. Explore feed for content discovery //Done -->
 
-5. Phase 5 - Security and Reliability
+<!-- 5. Phase 5 - Security and Reliability
    5.1. Advanced rate limiting (User-based and IP-based)
    5.2. Account protection (Email verification, secure password reset flows)
    5.3. Audit logging for critical system actions
    5.4. Enhanced input sanitization and XSS protection
-   5.5. API abuse and bot detection systems
+   5.5. API abuse and bot detection systems // Done -->
 
-6. Phase 6 - Observability and Monitoring
+<!-- 6. Phase 6 - Observability and Monitoring
    6.1. Metrics collection (Latency, error rates, throughput)
    6.2. Prometheus integration for time-series data
    6.3. Grafana dashboards for system visualization
    6.4. Distributed tracing for request flow tracking
-   6.5. Automated health checks and uptime monitoring
+   6.5. Automated health checks and uptime monitoring // Later Skipped for now  -->
 
 7. Phase 7 - DevOps and Deployment
    7.1. Dockerization of backend services
