@@ -8,6 +8,7 @@ import (
 
 func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Manager) {
 	posts := rg.Group("/posts")
+	posts.Use(middleware.OptionalAuth(jwtManager))
 	{
 		posts.GET("", handler.List)
 		posts.GET("/:id", handler.GetBySlug)
@@ -16,6 +17,6 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Ma
 		posts.DELETE("/:id", middleware.Auth(jwtManager), handler.Delete)
 		posts.POST("/:id/media", middleware.Auth(jwtManager), handler.UploadMedia)
 	}
-	rg.GET("/feed", handler.List)
+	rg.GET("/feed", middleware.OptionalAuth(jwtManager), handler.List)
 	rg.GET("/feed/following", middleware.Auth(jwtManager), handler.ListFollowing)
 }

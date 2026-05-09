@@ -90,6 +90,12 @@ func (h *Handler) List(c *gin.Context) {
 		response.Error(c, apperrors.BadRequest("Invalid query parameters"))
 		return
 	}
+
+	// Set RequestUserID for personalized ranking if logged in
+	if userID, ok := middleware.GetUserID(c); ok {
+		query.RequestUserID = userID
+	}
+
 	result, err := h.service.List(c.Request.Context(), query)
 	if err != nil {
 		var appErr *apperrors.AppError

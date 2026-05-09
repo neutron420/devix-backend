@@ -1,11 +1,11 @@
 # Devix Project Roadmap
 
-1. Phase 1 - Product Depth
+<!-- 1. Phase 1 - Product Depth
    1.1. Persistent notification system (Database storage + read/unread status + fetch API)
    1.2. Bookmark and save posts functionality
    1.3. Follow system (Followers/Following relationships + following-only feed)
    1.4. Feed ranking algorithm (Mix of recent, popular, and following content)
-   1.5. Extended user settings (Profile management, preferences)
+   1.5. Extended user settings (Profile management, preferences) -->
 
 2. Phase 2 - Performance and Optimization
    2.1. Advanced Redis caching (Feed, post, and user profile caching)

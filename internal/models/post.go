@@ -33,12 +33,12 @@ type Post struct {
 	Content      string             `gorm:"type:text;not null"`
 	PostType     PostType           `gorm:"size:20;not null;index"`
 	Status       PostStatus         `gorm:"size:20;default:published;index"`
-	ViewCount    int                `gorm:"default:0"`
-	VoteCount    int                `gorm:"default:0"`
-	CommentCount int                `gorm:"default:0"`
-	IsPinned     bool               `gorm:"default:false"`
-	ExternalLinks string `gorm:"type:text"`
-	CreatedAt     time.Time
+	ViewCount     int            `gorm:"default:0;index"`
+	VoteCount     int            `gorm:"default:0;index"`
+	CommentCount  int            `gorm:"default:0;index"`
+	IsPinned      bool           `gorm:"default:false"`
+	ExternalLinks string         `gorm:"type:text"`
+	CreatedAt     time.Time      `gorm:"index"`
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
 

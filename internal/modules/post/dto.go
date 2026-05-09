@@ -1,5 +1,7 @@
 package post
 
+import "github.com/google/uuid"
+
 type CreatePostRequest struct {
 	Title    string   `json:"title" binding:"required,min=5,max=300"`
 	Content  string   `json:"content" binding:"required,min=10"`
@@ -23,9 +25,10 @@ type FeedQuery struct {
 	Type     string `form:"type" binding:"omitempty,post_type"`
 	Tag      string `form:"tag"`
 	AuthorID  string `form:"author_id"`
-	AuthorIDs []string
-	Search    string `form:"q"`
-	Sort      string `form:"sort" binding:"omitempty,oneof=latest trending"`
+	AuthorIDs     []string
+	RequestUserID uuid.UUID
+	Search        string `form:"q"`
+	Sort          string `form:"sort" binding:"omitempty,oneof=latest trending"`
 }
 
 type PostResponse struct {

@@ -100,10 +100,17 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	}
 
 	if query.Sort == "trending" {
-		// Trending Score: (Votes * 0.7) + (Comments * 0.3) - (HoursSinceCreation * 0.1)
-		db = db.Order("((vote_count * 0.7) + (comment_count * 0.3) - (EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 * 0.1)) DESC")
+		// Smart Score: (Votes*2 + Comments*3 + Views*0.1 + 1) / (HoursSinceCreation + 2)^1.8
+		scoreExpr := "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / POWER(EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 + 2, 1.8)"
+
+		if query.RequestUserID != uuid.Nil {
+			db = db.Joins("LEFT JOIN follows ON follows.following_id = posts.author_id AND follows.follower_id = ?", query.RequestUserID)
+			db = db.Order("CASE WHEN follows.follower_id IS NOT NULL THEN (" + scoreExpr + ") * 1.5 ELSE (" + scoreExpr + ") END DESC")
+		} else {
+			db = db.Order("(" + scoreExpr + ") DESC")
+		}
 	} else {
-		db = db.Order("created_at desc, id desc")
+		db = db.Order("posts.created_at DESC, posts.id DESC")
 	}
 
 	err := db.Limit(limit + 1).Find(&posts).Error
