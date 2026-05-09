@@ -67,11 +67,16 @@ jobs:
             # Update image tag in the deployment file
             sed -i "s|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:${{ github.sha }}|g" "$FILE_PATH"
             
-            git config user.name "GitHub Actions Bot"
-            git config user.email "actions@github.com"
-            git add "$FILE_PATH"
-            git commit -m "chore(${{ steps.env_vars.outputs.env }}): update image to ${{ github.sha }}"
-            git push origin main
+            # Only commit and push if there are changes
+            if [ -n "$(git status --porcelain)" ]; then
+              git config user.name "GitHub Actions Bot"
+              git config user.email "actions@github.com"
+              git add "$FILE_PATH"
+              git commit -m "chore(${{ steps.env_vars.outputs.env }}): update image to ${{ github.sha }}"
+              git push origin main
+            else
+              echo "No changes to commit. Image tag is already up to date."
+            fi
           else
             echo "Error: $FILE_PATH not found in staging-ops repo!"
             exit 1
