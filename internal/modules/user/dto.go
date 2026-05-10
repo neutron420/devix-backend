@@ -25,9 +25,11 @@ type ProfileResponse struct {
 	Preferences string  `json:"preferences"`
 	Role        string  `json:"role"`
 	IsVerified  bool    `json:"is_verified"`
-	PostCount   int     `json:"post_count"`
-	Reputation  int     `json:"reputation"`
-	CreatedAt   string  `json:"created_at"`
+	PostCount   int      `json:"post_count"`
+	Reputation  int      `json:"reputation"`
+	Level       int      `json:"level"`
+	Badges      []string `json:"badges"`
+	CreatedAt   string   `json:"created_at"`
 }
 
 type PublicProfileResponse struct {
@@ -36,7 +38,9 @@ type PublicProfileResponse struct {
 	DisplayName *string `json:"display_name"`
 	Bio         *string `json:"bio"`
 	AvatarURL   *string `json:"avatar_url"`
-	PostCount   int     `json:"post_count"`
-	Reputation  int     `json:"reputation"`
-	CreatedAt   string  `json:"created_at"`
+	PostCount   int      `json:"post_count"`
+	Reputation  int      `json:"reputation"`
+	Level       int      `json:"level"`
+	Badges      []string `json:"badges"`
+	CreatedAt   string   `json:"created_at"`
 }

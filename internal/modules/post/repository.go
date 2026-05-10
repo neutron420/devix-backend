@@ -222,3 +222,36 @@ func (r *Repository) DecrementUserPostCount(ctx context.Context, userID uuid.UUI
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).
 		UpdateColumn("post_count", gorm.Expr("GREATEST(post_count - ?, 0)", 1)).Error
 }
+
+func (r *Repository) ListDrafts(ctx context.Context, authorID uuid.UUID) ([]models.Post, error) {
+	var posts []models.Post
+	err := r.db.WithContext(ctx).
+		Preload("Tags").
+		Where("author_id = ? AND status = ?", authorID, "draft").
+		Order("updated_at DESC").
+		Find(&posts).Error
+	if err != nil {
+		return nil, err
+	}
+	for i := range posts {
+		var author models.User
+		if err := r.db.WithContext(ctx).First(&author, "id = ?", posts[i].AuthorID).Error; err == nil {
+			posts[i].Author = &models.UserPublicProfile{
+				ID: author.ID, Username: author.Username,
+				DisplayName: author.DisplayName, AvatarURL: author.AvatarURL,
+			}
+		}
+	}
+	return posts, nil
+}
+
+func (r *Repository) Autosave(ctx context.Context, postID uuid.UUID, title, content *string) error {
+	updates := map[string]interface{}{"updated_at": time.Now()}
+	if title != nil {
+		updates["title"] = *title
+	}
+	if content != nil {
+		updates["content"] = *content
+	}
+	return r.db.WithContext(ctx).Model(&models.Post{}).Where("id = ? AND status = ?", postID, "draft").Updates(updates).Error
+}

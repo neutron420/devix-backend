@@ -53,8 +53,17 @@ func NewService(repo *Repository, mediaService *media.Service, tagService *tagmo
 }
 
 func (s *Service) handleSyncPostSearch(ctx context.Context, payload interface{}) error {
-	postID, ok := payload.(uuid.UUID)
-	if !ok {
+	var postID uuid.UUID
+	switch v := payload.(type) {
+	case uuid.UUID:
+		postID = v
+	case string:
+		var err error
+		postID, err = uuid.Parse(v)
+		if err != nil {
+			return fmt.Errorf("invalid payload string for sync_post_search: %v", err)
+		}
+	default:
 		return fmt.Errorf("invalid payload type for sync_post_search")
 	}
 
@@ -82,8 +91,17 @@ func (s *Service) handleSyncPostSearch(ctx context.Context, payload interface{})
 }
 
 func (s *Service) handleIncrementViewCount(ctx context.Context, payload interface{}) error {
-	id, ok := payload.(uuid.UUID)
-	if !ok {
+	var id uuid.UUID
+	switch v := payload.(type) {
+	case uuid.UUID:
+		id = v
+	case string:
+		var err error
+		id, err = uuid.Parse(v)
+		if err != nil {
+			return fmt.Errorf("invalid payload string for increment_view_count: %v", err)
+		}
+	default:
 		return fmt.Errorf("invalid payload type for increment_view_count")
 	}
 	return s.repo.IncrementViewCount(ctx, id)
@@ -407,4 +425,33 @@ func (s *Service) toResponse(p *models.Post) *PostResponse {
 		resp.Media = append(resp.Media, mr)
 	}
 	return resp
+}
+
+func (s *Service) ListDrafts(ctx context.Context, authorID uuid.UUID) ([]PostResponse, error) {
+	posts, err := s.repo.ListDrafts(ctx, authorID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	responses := make([]PostResponse, 0, len(posts))
+	for _, p := range posts {
+		responses = append(responses, *s.toResponse(&p))
+	}
+	return responses, nil
+}
+
+func (s *Service) Autosave(ctx context.Context, postID, userID uuid.UUID, req *AutosaveRequest) error {
+	post, err := s.repo.GetByID(ctx, postID)
+	if err != nil {
+		return apperrors.Internal(err)
+	}
+	if post == nil {
+		return apperrors.NotFound("Post")
+	}
+	if post.AuthorID != userID {
+		return apperrors.Forbidden("You can only autosave your own drafts")
+	}
+	if post.Status != "draft" {
+		return apperrors.BadRequest("Only drafts can be autosaved")
+	}
+	return s.repo.Autosave(ctx, postID, req.Title, req.Content)
 }

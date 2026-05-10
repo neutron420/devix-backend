@@ -12,7 +12,10 @@ import (
 type Service struct {
 	repo         *Repository
 	notifService *notification.Service
-	log          zerolog.Logger
+	userService  interface {
+		AdjustReputation(ctx context.Context, userID uuid.UUID, points int) error
+	}
+	log zerolog.Logger
 }
 
 func NewService(repo *Repository, notifService *notification.Service, log zerolog.Logger) *Service {
@@ -21,6 +24,12 @@ func NewService(repo *Repository, notifService *notification.Service, log zerolo
 		notifService: notifService,
 		log:          log.With().Str("module", "vote").Logger(),
 	}
+}
+
+func (s *Service) SetUserService(us interface {
+	AdjustReputation(ctx context.Context, userID uuid.UUID, points int) error
+}) {
+	s.userService = us
 }
 
 func (s *Service) VoteOnPost(ctx context.Context, userID, postID uuid.UUID, voteType int) (int, error) {
@@ -33,14 +42,22 @@ func (s *Service) VoteOnPost(ctx context.Context, userID, postID uuid.UUID, vote
 		return 0, apperrors.Internal(err)
 	}
 
-	if voteType > 0 {
-		go func() {
-			authorID, err := s.repo.GetPostAuthorID(context.Background(), postID)
-			if err == nil {
-				_ = s.notifService.CreateNotification(context.Background(), authorID, userID, postID, "post_voted")
+	go func() {
+		authorID, err := s.repo.GetPostAuthorID(context.Background(), postID)
+		if err != nil || authorID == userID {
+			return
+		}
+		if voteType > 0 {
+			_ = s.notifService.CreateNotification(context.Background(), authorID, userID, postID, "post_voted")
+			if s.userService != nil {
+				_ = s.userService.AdjustReputation(context.Background(), authorID, 5)
 			}
-		}()
-	}
+		} else if voteType < 0 {
+			if s.userService != nil {
+				_ = s.userService.AdjustReputation(context.Background(), authorID, -2)
+			}
+		}
+	}()
 
 	return count, nil
 }
@@ -55,14 +72,22 @@ func (s *Service) VoteOnComment(ctx context.Context, userID, commentID uuid.UUID
 		return 0, apperrors.Internal(err)
 	}
 
-	if voteType > 0 {
-		go func() {
-			authorID, err := s.repo.GetCommentAuthorID(context.Background(), commentID)
-			if err == nil {
-				_ = s.notifService.CreateNotification(context.Background(), authorID, userID, commentID, "comment_voted")
+	go func() {
+		authorID, err := s.repo.GetCommentAuthorID(context.Background(), commentID)
+		if err != nil || authorID == userID {
+			return
+		}
+		if voteType > 0 {
+			_ = s.notifService.CreateNotification(context.Background(), authorID, userID, commentID, "comment_voted")
+			if s.userService != nil {
+				_ = s.userService.AdjustReputation(context.Background(), authorID, 2)
 			}
-		}()
-	}
+		} else if voteType < 0 {
+			if s.userService != nil {
+				_ = s.userService.AdjustReputation(context.Background(), authorID, -1)
+			}
+		}
+	}()
 
 	return count, nil
 }

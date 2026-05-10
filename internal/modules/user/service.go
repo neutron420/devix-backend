@@ -74,6 +74,8 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 		AvatarURL:   user.AvatarURL,
 		PostCount:   user.PostCount,
 		Reputation:  user.Reputation,
+		Level:       CalculateLevel(user.Reputation),
+		Badges:      CalculateBadges(user.Reputation),
 		CreatedAt:   user.CreatedAt.Format(time.RFC3339),
 	}
 
@@ -133,6 +135,8 @@ func (s *Service) toResponse(user *models.User) *ProfileResponse {
 		IsVerified:  user.IsVerified,
 		PostCount:   user.PostCount,
 		Reputation:  user.Reputation,
+		Level:       CalculateLevel(user.Reputation),
+		Badges:      CalculateBadges(user.Reputation),
 		CreatedAt:   user.CreatedAt.Format(time.RFC3339),
 	}
 }
@@ -150,4 +154,13 @@ func (s *Service) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL 
 	}
 
 	return s.GetMyProfile(ctx, userID)
+}
+
+func (s *Service) AdjustReputation(ctx context.Context, userID uuid.UUID, points int) error {
+	if err := s.repo.AdjustReputation(ctx, userID, points); err != nil {
+		s.log.Error().Err(err).Str("user_id", userID.String()).Int("points", points).Msg("failed to adjust reputation")
+		return apperrors.Internal(err)
+	}
+	_ = s.cache.DeleteByPattern(ctx, "users:profile:*")
+	return nil
 }

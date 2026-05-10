@@ -246,3 +246,50 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	}
 	response.Created(c, uploaded)
 }
+
+func (h *Handler) ListDrafts(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
+	drafts, err := h.service.ListDrafts(c.Request.Context(), userID)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OK(c, drafts)
+}
+
+func (h *Handler) Autosave(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
+	postID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.BadRequest("Invalid post ID"))
+		return
+	}
+	var req AutosaveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperrors.BadRequest("Invalid request: "+err.Error()))
+		return
+	}
+	if err := h.service.Autosave(c.Request.Context(), postID, userID, &req); err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OK(c, gin.H{"message": "draft autosaved"})
+}

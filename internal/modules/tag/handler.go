@@ -44,3 +44,31 @@ func (h *Handler) GetTrending(c *gin.Context) {
 	response.OK(c, result)
 }
 
+func (h *Handler) GetTree(c *gin.Context) {
+	result, err := h.service.GetTagTree(c.Request.Context())
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OK(c, result)
+}
+
+func (h *Handler) GetByCategory(c *gin.Context) {
+	category := c.Param("category")
+	result, err := h.service.GetByCategory(c.Request.Context(), category)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OK(c, result)
+}

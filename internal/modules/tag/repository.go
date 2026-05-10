@@ -74,3 +74,20 @@ func (r *Repository) GetTrending(ctx context.Context, limit int, since time.Dura
 	return tags, err
 }
 
+func (r *Repository) GetChildren(ctx context.Context, parentID uuid.UUID) ([]models.Tag, error) {
+	var tags []models.Tag
+	err := r.db.WithContext(ctx).Where("parent_id = ?", parentID).Order("name ASC").Find(&tags).Error
+	return tags, err
+}
+
+func (r *Repository) GetByCategory(ctx context.Context, category string) ([]models.Tag, error) {
+	var tags []models.Tag
+	err := r.db.WithContext(ctx).Where("category = ?", category).Order("post_count DESC, name ASC").Find(&tags).Error
+	return tags, err
+}
+
+func (r *Repository) GetTopLevel(ctx context.Context) ([]models.Tag, error) {
+	var tags []models.Tag
+	err := r.db.WithContext(ctx).Where("parent_id IS NULL").Order("post_count DESC, name ASC").Find(&tags).Error
+	return tags, err
+}

@@ -20,6 +20,8 @@ import (
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
+	"devix-backend/internal/modules/report"
+	"devix-backend/internal/modules/activity"
 	"devix-backend/internal/modules/search"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
@@ -67,6 +69,8 @@ func main() {
 		&models.Bookmark{},
 		&models.Follow{},
 		&models.AuditLog{},
+		&models.Report{},
+		&models.ActivityLog{},
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("auto-migration failed")
@@ -112,7 +116,7 @@ func main() {
 		log.Info().Msg("using local filesystem storage")
 	}
 
-	jobQueue := queue.New(100, log)
+	jobQueue := queue.New(redis, "devix-jobs", log)
 	jobQueue.Start(ctx, 3)
 	defer jobQueue.Close()
 
@@ -129,6 +133,8 @@ func main() {
 	notificationRepo := notification.NewRepository(db)
 	bookmarkRepo := bookmark.NewRepository(db)
 	followRepo := follow.NewRepository(db)
+	reportRepo := report.NewRepository(db)
+	activityRepo := activity.NewRepository(db)
 
 	wsService := wsmod.NewService(hub, log)
 	searchService := search.NewService(esClient, log)
@@ -143,6 +149,9 @@ func main() {
 	bookmarkService := bookmark.NewService(bookmarkRepo, postService, log)
 	commentService := comment.NewService(commentRepo, wsService, notificationService, log)
 	voteService := vote.NewService(voteRepo, notificationService, log)
+	voteService.SetUserService(userService)
+	reportService := report.NewService(reportRepo, log)
+	activityService := activity.NewService(activityRepo, log)
 	auditService := audit.NewService(db, log)
 
 	handlers := &router.Handlers{
@@ -155,6 +164,8 @@ func main() {
 		Notification: notification.NewHandler(notificationService),
 		Bookmark:     bookmark.NewHandler(bookmarkService),
 		Follow:       follow.NewHandler(followService),
+		Report:       report.NewHandler(reportService),
+		Activity:     activity.NewHandler(activityService),
 		WS:           wsmod.NewHandler(hub),
 	}
 

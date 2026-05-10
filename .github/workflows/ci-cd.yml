@@ -60,24 +60,36 @@ jobs:
         env:
           PAT: ${{ secrets.STAGING_OPS_PAT }}
         run: |
+          # 1. Clone the ops repository
           git clone https://x-access-token:${PAT}@github.com/${{ github.repository_owner }}/staging-ops.git
           cd staging-ops
           
+          # 2. Identify target file
           FILE_PATH="${{ steps.env_vars.outputs.ops_path }}/deployment.yml"
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}"
+          NEW_TAG="${{ github.sha }}"
           
           if [ -f "$FILE_PATH" ]; then
-            # Update image tag in the deployment file
-            sed -i "s|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.env_vars.outputs.image_name }}:${{ github.sha }}|g" "$FILE_PATH"
+            echo "Updating image in $FILE_PATH to $NEW_TAG"
             
-            # Only commit and push if there are changes
-            if [ -n "$(git status --porcelain)" ]; then
-              git config user.name "GitHub Actions Bot"
-              git config user.email "actions@github.com"
+            # Precise regex to only update the correct image line
+            # Matches 'image: <IMAGE_NAME>:<TAG>' and replaces with 'image: <IMAGE_NAME>:<NEW_TAG>'
+            sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${NEW_TAG}|g" "$FILE_PATH"
+            
+            # 3. Commit and Push if changed
+            if [[ -n "$(git status --porcelain)" ]]; then
+              git config user.name "Devix Ghost Bot"
+              git config user.email "bot@devix.app"
               git add "$FILE_PATH"
-              git commit -m "chore(${{ steps.env_vars.outputs.env }}): update image to ${{ github.sha }}"
+              
+              COMMIT_MSG="deploy(${{ steps.env_vars.outputs.env }}): update image to ${NEW_TAG:0:7}"
+              COMMIT_BODY="Triggered by commit: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+              
+              git commit -m "$COMMIT_MSG" -m "$COMMIT_BODY"
               git push origin main
+              echo "Successfully updated staging-ops!"
             else
-              echo "No changes to commit. Image tag is already up to date."
+              echo "No changes needed. Image is already at current SHA."
             fi
           else
             echo "Error: $FILE_PATH not found in staging-ops repo!"

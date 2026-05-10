@@ -5,6 +5,7 @@ import (
 
 	"devix-backend/internal/config"
 	"devix-backend/internal/middleware"
+	"devix-backend/internal/modules/activity"
 	"devix-backend/internal/modules/audit"
 	"devix-backend/internal/modules/auth"
 	"devix-backend/internal/modules/bookmark"
@@ -13,6 +14,7 @@ import (
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
 	"devix-backend/internal/modules/post"
+	"devix-backend/internal/modules/report"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
 	"devix-backend/internal/modules/vote"
@@ -34,6 +36,8 @@ type Handlers struct {
 	Notification *notification.Handler
 	Bookmark     *bookmark.Handler
 	Follow       *follow.Handler
+	Report       *report.Handler
+	Activity     *activity.Handler
 	WS           *websocket.Handler
 }
 
@@ -92,6 +96,8 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	notification.RegisterRoutes(v1, handlers.Notification, jwtManager)
 	bookmark.RegisterRoutes(v1, handlers.Bookmark, jwtManager)
 	follow.RegisterRoutes(v1, handlers.Follow, jwtManager)
+	report.RegisterRoutes(v1, handlers.Report, jwtManager)
+	activity.RegisterRoutes(v1, handlers.Activity, jwtManager)
 
 	_ = auditSvc
 

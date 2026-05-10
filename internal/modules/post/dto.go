@@ -78,3 +78,8 @@ type PostListResponse struct {
 	Cursor  string         `json:"cursor,omitempty"`
 	HasMore bool           `json:"has_more"`
 }
+
+type AutosaveRequest struct {
+	Title   *string `json:"title" binding:"omitempty,min=1,max=300"`
+	Content *string `json:"content" binding:"omitempty"`
+}

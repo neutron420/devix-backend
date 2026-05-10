@@ -83,3 +83,7 @@ func (r *Repository) Delete(ctx context.Context, userID uuid.UUID) error {
 func (r *Repository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("avatar_url", avatarURL).Error
 }
+
+func (r *Repository) AdjustReputation(ctx context.Context, userID uuid.UUID, points int) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("reputation", gorm.Expr("reputation + ?", points)).Error
+}
