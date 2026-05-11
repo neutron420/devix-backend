@@ -111,7 +111,7 @@ func (s *Service) IndexPost(ctx context.Context, post IndexedPost) error {
 	return nil
 }
 
-func (s *Service) SearchPosts(ctx context.Context, query string, limit int) ([]uuid.UUID, error) {
+func (s *Service) SearchPosts(ctx context.Context, query string, limit, offset int) ([]uuid.UUID, error) {
 	if s.es == nil {
 		return nil, nil
 	}
@@ -129,6 +129,7 @@ func (s *Service) SearchPosts(ctx context.Context, query string, limit int) ([]u
 			},
 		},
 		"size": limit,
+		"from": offset,
 	}
 
 	if err := json.NewEncoder(&buf).Encode(searchQuery); err != nil {

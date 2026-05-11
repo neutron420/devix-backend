@@ -28,6 +28,7 @@ import (
 	"devix-backend/internal/modules/vote"
 	wsmod "devix-backend/internal/modules/websocket"
 	"devix-backend/internal/pkg/cache"
+	"devix-backend/internal/pkg/email"
 	jwtpkg "devix-backend/internal/pkg/jwt"
 	"devix-backend/internal/pkg/logger"
 	"devix-backend/internal/queue"
@@ -116,6 +117,8 @@ func main() {
 		log.Info().Msg("using local filesystem storage")
 	}
 
+	mailer := email.NewMailer(cfg.Email)
+
 	jobQueue := queue.New(redis, "devix-jobs", log)
 	jobQueue.Start(ctx, 3)
 	defer jobQueue.Close()
@@ -138,7 +141,7 @@ func main() {
 
 	wsService := wsmod.NewService(hub, log)
 	searchService := search.NewService(esClient, log)
-	authService := auth.NewService(authRepo, jwtManager, log)
+	authService := auth.NewService(authRepo, jwtManager, mailer, log)
 	mediaService := media.NewService(mediaRepo, storage, cfg.Media, log)
 	userService := user.NewService(userRepo, appCache, log)
 	tagService := tag.NewService(tagRepo, appCache, log)

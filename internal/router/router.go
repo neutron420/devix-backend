@@ -64,6 +64,7 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	r.Use(middleware.Logger(log))
 	r.Use(middleware.CORS(cfg.CORS.Origins))
 	r.Use(middleware.RedisRateLimit(redisLimiter, cfg.Rate.Requests, cfg.Rate.Window))
+	r.Use(middleware.Audit(auditSvc))
 
 	media.RegisterRoutes(r, cfg.Media.UploadDir)
 
@@ -77,6 +78,11 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "devix-backend"})
+	})
+
+	r.GET("/metrics", func(c *gin.Context) {
+		// Placeholder for Prometheus metrics
+		c.String(200, "# HELP devix_uptime Uptime of the service\n# TYPE devix_uptime counter\ndevix_uptime 1")
 	})
 
 	r.GET("/ws", middleware.Auth(jwtManager), handlers.WS.ServeWS)
@@ -99,7 +105,6 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	report.RegisterRoutes(v1, handlers.Report, jwtManager)
 	activity.RegisterRoutes(v1, handlers.Activity, jwtManager)
 
-	_ = auditSvc
 
 	return r
 }

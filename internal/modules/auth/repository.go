@@ -51,6 +51,49 @@ func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*models.Use
 	return &user, err
 }
 
+func (r *Repository) GetUserByVerificationToken(ctx context.Context, token string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).Where("verification_token = ?", token).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (r *Repository) SetUserVerified(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"is_verified":        true,
+			"verification_token": nil,
+		}).Error
+}
+
+func (r *Repository) SetUserResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"reset_token":      &token,
+			"reset_expires_at": &expiresAt,
+		}).Error
+}
+
+func (r *Repository) GetUserByResetToken(ctx context.Context, token string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).Where("reset_token = ? AND reset_expires_at > ?", token, time.Now()).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (r *Repository) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"password_hash":    passwordHash,
+			"reset_token":      nil,
+			"reset_expires_at": nil,
+		}).Error
+}
+
 func (r *Repository) StoreRefreshToken(ctx context.Context, userID uuid.UUID, hash string, expiresAt time.Time) error {
 	token := &models.RefreshToken{
 		ID:        uuid.New(),

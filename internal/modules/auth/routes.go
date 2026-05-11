@@ -11,5 +11,8 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler) {
 		auth.POST("/login", handler.Login)
 		auth.POST("/refresh", handler.Refresh)
 		auth.POST("/logout", handler.Logout)
+		auth.POST("/verify-email", handler.VerifyEmail)
+		auth.POST("/forgot-password", handler.ForgotPassword)
+		auth.POST("/reset-password", handler.ResetPassword)
 	}
 }

@@ -95,6 +95,36 @@ func (h *Handler) DeleteMe(c *gin.Context) {
 	response.NoContent(c)
 }
 
+func (h *Handler) UpdateStatus(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
+
+	var req UpdateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperrors.BadRequest("Invalid request body"))
+		return
+	}
+
+	if err := h.service.UpdateStatus(c.Request.Context(), userID, req.IsActive); err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+
+	status := "activated"
+	if !req.IsActive {
+		status = "deactivated"
+	}
+	response.OK(c, gin.H{"message": "Account successfully " + status})
+}
+
 func (h *Handler) UpdateAvatar(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {

@@ -118,6 +118,14 @@ func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
 	return nil
 }
 
+func (s *Service) UpdateStatus(ctx context.Context, userID uuid.UUID, isActive bool) error {
+	if err := s.repo.UpdateStatus(ctx, userID, isActive); err != nil {
+		s.log.Error().Err(err).Msg("failed to update user status")
+		return apperrors.Internal(err)
+	}
+	return nil
+}
+
 func (s *Service) toResponse(user *models.User) *ProfileResponse {
 	return &ProfileResponse{
 		ID:          user.ID.String(),

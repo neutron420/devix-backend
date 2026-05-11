@@ -16,6 +16,7 @@ type User struct {
 	Bio          *string   `gorm:"type:text"`
 	AvatarURL    *string   `gorm:"type:text"`
 	Role         string    `gorm:"default:user;size:20"`
+	IsActive     bool      `gorm:"default:true"`
 	IsVerified   bool      `gorm:"default:false"`
 	PostCount    int       `gorm:"default:0"`
 	Reputation   int       `gorm:"default:0"`
@@ -25,6 +26,9 @@ type User struct {
 	TwitterURL   string `gorm:"size:255"`
 	Location     string `gorm:"size:100"`
 	Preferences  string `gorm:"type:text;default:'{}'"` // JSON string
+	VerificationToken *string `gorm:"size:255"`
+	ResetToken        *string `gorm:"size:255"`
+	ResetExpiresAt   *time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`

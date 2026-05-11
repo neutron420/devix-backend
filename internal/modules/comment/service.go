@@ -71,16 +71,24 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 	go func() {
 		// If it's a reply, notify parent author
 		if comment.ParentID != nil {
-			parent, _ := s.repo.GetByID(context.Background(), *comment.ParentID)
+			parent, err := s.repo.GetByID(context.Background(), *comment.ParentID)
+			if err != nil {
+				s.log.Warn().Err(err).Msg("failed to get parent comment for notification")
+			}
 			if parent != nil {
-				_ = s.notifService.CreateNotification(context.Background(), parent.AuthorID, authorID, comment.ID, "replied")
+				if err := s.notifService.CreateNotification(context.Background(), parent.AuthorID, authorID, comment.ID, "replied"); err != nil {
+					s.log.Warn().Err(err).Msg("failed to create reply notification")
+				}
 			}
 		} else {
 			// Notify post author (we'd need post author ID here)
 			// For now, let's just use the repo to find post author
 			postAuthorID, err := s.repo.GetPostAuthorID(context.Background(), postID)
-			if err == nil {
-				_ = s.notifService.CreateNotification(context.Background(), postAuthorID, authorID, comment.ID, "commented")
+			if err != nil {
+				s.log.Warn().Err(err).Msg("failed to get post author for notification")
+			}
+			if err := s.notifService.CreateNotification(context.Background(), postAuthorID, authorID, comment.ID, "commented"); err != nil {
+				s.log.Warn().Err(err).Msg("failed to create comment notification")
 			}
 		}
 	}()
@@ -122,7 +130,11 @@ func (s *Service) Delete(ctx context.Context, commentID, userID uuid.UUID, userR
 	if comment.AuthorID != userID && userRole != "admin" && userRole != "moderator" {
 		return apperrors.Forbidden("You can only delete your own comments")
 	}
-	return s.repo.SoftDelete(ctx, commentID)
+	if err := s.repo.SoftDelete(ctx, commentID); err != nil {
+		return apperrors.Internal(err)
+	}
+	_ = s.repo.DecrementPostCommentCount(ctx, comment.PostID)
+	return nil
 }
 
 func (s *Service) buildTree(flat []models.Comment) []CommentResponse {

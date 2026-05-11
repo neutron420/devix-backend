@@ -80,6 +80,10 @@ func (r *Repository) Delete(ctx context.Context, userID uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&models.User{}, userID).Error
 }
 
+func (r *Repository) UpdateStatus(ctx context.Context, userID uuid.UUID, isActive bool) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("is_active", isActive).Error
+}
+
 func (r *Repository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("avatar_url", avatarURL).Error
 }

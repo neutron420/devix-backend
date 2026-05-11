@@ -17,6 +17,7 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Ma
 			me.PUT("", handler.UpdateMe)
 			me.PATCH("/settings", handler.UpdateSettings)
 			me.DELETE("", handler.DeleteMe)
+			me.PATCH("/status", handler.UpdateStatus)
 			me.PUT("/avatar", handler.UpdateAvatar)
 		}
 

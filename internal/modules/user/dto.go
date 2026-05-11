@@ -11,6 +11,10 @@ type UpdateProfileRequest struct {
 	Preferences *string `json:"preferences" binding:"omitempty"`
 }
 
+type UpdateStatusRequest struct {
+	IsActive bool `json:"is_active"`
+}
+
 type ProfileResponse struct {
 	ID          string  `json:"id"`
 	Username    string  `json:"username"`

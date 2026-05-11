@@ -73,6 +73,11 @@ func (r *Repository) IncrementPostCommentCount(ctx context.Context, postID uuid.
 		UpdateColumn("comment_count", gorm.Expr("comment_count + ?", 1)).Error
 }
 
+func (r *Repository) DecrementPostCommentCount(ctx context.Context, postID uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&models.Post{}).Where("id = ?", postID).
+		UpdateColumn("comment_count", gorm.Expr("comment_count - ?", 1)).Error
+}
+
 func (r *Repository) GetParentDepth(ctx context.Context, parentID uuid.UUID) (int, error) {
 	var c models.Comment
 	err := r.db.WithContext(ctx).Select("depth").First(&c, "id = ?", parentID).Error

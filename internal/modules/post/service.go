@@ -158,13 +158,19 @@ func (s *Service) Create(ctx context.Context, authorID uuid.UUID, req *CreatePos
 	if len(req.Tags) > 0 {
 		tagIDs, err := s.tagService.FindOrCreateByNames(ctx, req.Tags)
 		if err == nil {
-			_ = s.repo.SetPostTags(ctx, post.ID, tagIDs)
+			if err := s.repo.SetPostTags(ctx, post.ID, tagIDs); err != nil {
+				s.log.Warn().Err(err).Msg("failed to set post tags")
+			}
 		}
 	}
-	_ = s.repo.IncrementUserPostCount(ctx, authorID)
+	if err := s.repo.IncrementUserPostCount(ctx, authorID); err != nil {
+		s.log.Warn().Err(err).Msg("failed to increment user post count")
+	}
 
 	// Invalidate feed caches
-	_ = s.cache.DeleteByPattern(ctx, "posts:feed:*")
+	if err := s.cache.DeleteByPattern(ctx, "posts:feed:*"); err != nil {
+		s.log.Warn().Err(err).Msg("failed to invalidate feed cache")
+	}
 
 	// Sync to Search (Elasticsearch) via Background Queue
 	if s.queue != nil {
@@ -236,12 +242,13 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 
 	// If it's a search query, use Elasticsearch
 	if query.Search != "" && s.searchService != nil {
-		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit)
+		offset := 0
+		if query.Cursor != "" {
+			// Search uses simple offset, so we decode cursor to get offset if possible
+			// or just use 0 for now as a simple implementation.
+		}
+		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit, offset)
 		if err == nil && len(esIDs) > 0 {
-			query.AuthorIDs = make([]string, len(esIDs))
-			// This is a hack to use the existing List method with IDs from ES
-			// But since we want to maintain pagination/sorting, we'll need to handle it better.
-			// For now, let's just fetch these specific posts.
 			posts, _, err := s.repo.GetByIDs(ctx, esIDs)
 			if err == nil {
 				responses := make([]PostResponse, 0, len(posts))
@@ -250,7 +257,8 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 					p.Tags = tags
 					responses = append(responses, *s.toResponse(&p))
 				}
-				return &PostListResponse{Posts: responses, HasMore: false}, nil
+				hasMore := len(responses) == query.Limit
+				return &PostListResponse{Posts: responses, HasMore: hasMore}, nil
 			}
 		}
 	}

@@ -20,10 +20,22 @@ type Config struct {
 	R2            R2Config
 	CORS          CORSConfig
 	Rate          RateLimitConfig
+	Email         EmailConfig
+}
+
+type EmailConfig struct {
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUser     string
+	SMTPPass     string
+	SMTPFrom     string
+	FrontendURL  string
 }
 
 type ElasticsearchConfig struct {
-	URL string
+	URL      string
+	Username string
+	Password string
 }
 
 type ServerConfig struct {
@@ -143,6 +155,14 @@ func Load() (*Config, error) {
 			Window:       getDurationEnv("RATE_LIMIT_WINDOW", time.Minute),
 			AuthRequests: getIntEnv("AUTH_RATE_LIMIT_REQUESTS", 5),
 			AuthWindow:   getDurationEnv("AUTH_RATE_LIMIT_WINDOW", time.Minute),
+		},
+		Email: EmailConfig{
+			SMTPHost:    getEnv("SMTP_HOST", ""),
+			SMTPPort:    getIntEnv("SMTP_PORT", 587),
+			SMTPUser:    getEnv("SMTP_USER", ""),
+			SMTPPass:    getEnv("SMTP_PASS", ""),
+			SMTPFrom:    getEnv("SMTP_FROM", "noreply@devix.app"),
+			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 		},
 	}
 
