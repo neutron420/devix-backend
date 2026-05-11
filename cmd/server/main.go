@@ -121,7 +121,7 @@ func main() {
 	var storage media.StorageProvider
 	if cfg.Media.StorageType == "r2" {
 		var err error
-		storage, err = media.NewR2Storage(ctx, cfg.R2)
+		storage, err = media.NewR2Storage(ctx, cfg.R2, cfg.Media.ImageTransformQuery)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to initialize R2 storage")
 		}

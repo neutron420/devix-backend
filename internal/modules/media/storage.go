@@ -76,10 +76,11 @@ type R2Storage struct {
 	client     *s3.Client
 	bucketName string
 	publicURL  string
-	cdnURL     string
+	cdnURL         string
+	transformQuery string
 }
 
-func NewR2Storage(ctx context.Context, cfg config.R2Config) (*R2Storage, error) {
+func NewR2Storage(ctx context.Context, cfg config.R2Config, transformQuery string) (*R2Storage, error) {
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			URL: cfg.Endpoint,
@@ -101,7 +102,8 @@ func NewR2Storage(ctx context.Context, cfg config.R2Config) (*R2Storage, error) 
 		client:     client,
 		bucketName: cfg.BucketName,
 		publicURL:  cfg.PublicURL,
-		cdnURL:     cfg.CDNURL,
+		cdnURL:         cfg.CDNURL,
+		transformQuery: transformQuery,
 	}, nil
 }
 
@@ -136,11 +138,14 @@ func (s *R2Storage) Delete(ctx context.Context, path string) error {
 	}
 	return nil
 }
-
 func (s *R2Storage) GetURL(path string) string {
 	baseURL := s.publicURL
 	if s.cdnURL != "" {
 		baseURL = s.cdnURL
 	}
-	return baseURL + "/" + path
+	url := baseURL + "/" + path
+	if s.transformQuery != "" {
+		url += s.transformQuery
+	}
+	return url
 }
