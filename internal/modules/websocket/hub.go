@@ -17,6 +17,7 @@ type Message struct {
 
 const (
 	RedisChannelWS = "devix:ws:events"
+	RedisKeyPresence = "devix:presence:"
 )
 
 type Hub struct {
@@ -61,8 +62,15 @@ func (h *Hub) Run(ctx context.Context) {
 			return
 		case client := <-h.register:
 			h.mu.Lock()
+			isFirst := len(h.userClients[client.UserID]) == 0
 			h.clients[client] = true
 			h.userClients[client.UserID] = append(h.userClients[client.UserID], client)
+			
+			if isFirst && h.redis != nil {
+				h.redis.Set(ctx, RedisKeyPresence+client.UserID.String(), "1", 0)
+				
+				h.Broadcast(Message{Type: "presence:online", Payload: map[string]string{"user_id": client.UserID.String()}})
+			}
 			h.mu.Unlock()
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -79,6 +87,11 @@ func (h *Hub) Run(ctx context.Context) {
 				}
 				if len(h.userClients[client.UserID]) == 0 {
 					delete(h.userClients, client.UserID)
+					if h.redis != nil {
+						h.redis.Del(ctx, RedisKeyPresence+client.UserID.String())
+						// Broadcast offline status
+						h.Broadcast(Message{Type: "presence:offline", Payload: map[string]string{"user_id": client.UserID.String()}})
+					}
 				}
 
 				// Remove from all rooms
@@ -240,4 +253,25 @@ func (h *Hub) NotifyUser(userID uuid.UUID, msg Message) {
 	} else {
 		h.localNotifyUser(userID, data)
 	}
+}
+
+func (h *Hub) IsUserOnline(ctx context.Context, userID uuid.UUID) bool {
+	if h.redis != nil {
+		exists, _ := h.redis.Exists(ctx, RedisKeyPresence+userID.String()).Result()
+		return exists > 0
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	_, ok := h.userClients[userID]
+	return ok
+}
+
+func (h *Hub) NotifyTyping(userID uuid.UUID, otherUserID uuid.UUID, isTyping bool) {
+	h.NotifyUser(otherUserID, Message{
+		Type: "chat:typing",
+		Payload: map[string]interface{}{
+			"user_id":   userID.String(),
+			"is_typing": isTyping,
+		},
+	})
 }

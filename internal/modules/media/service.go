@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	"devix-backend/internal/config"
@@ -48,7 +49,8 @@ func (s *Service) UploadAvatar(ctx context.Context, file multipart.File, header 
 		return "", apperrors.Internal(err)
 	}
 
-	return s.storage.GetURL(path), nil
+	url := s.storage.GetURL(path)
+	return s.TransformURL(url, models.MediaTypeImage), nil
 }
 
 func (s *Service) UploadPostMedia(ctx context.Context, postID uuid.UUID, files []*FileUpload) ([]*models.Media, error) {
@@ -117,6 +119,7 @@ func (s *Service) UploadPostMedia(ctx context.Context, postID uuid.UUID, files [
 			return nil, apperrors.Internal(err)
 		}
 
+		media.FileURL = s.TransformURL(media.FileURL, media.FileType)
 		results = append(results, media)
 	}
 
@@ -124,7 +127,14 @@ func (s *Service) UploadPostMedia(ctx context.Context, postID uuid.UUID, files [
 }
 
 func (s *Service) GetPostMedia(ctx context.Context, postID uuid.UUID) ([]models.Media, error) {
-	return s.repo.GetByPostID(ctx, postID)
+	mediaList, err := s.repo.GetByPostID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range mediaList {
+		mediaList[i].FileURL = s.TransformURL(mediaList[i].FileURL, mediaList[i].FileType)
+	}
+	return mediaList, nil
 }
 
 func (s *Service) DeletePostMedia(ctx context.Context, postID uuid.UUID) error {
@@ -136,6 +146,23 @@ func (s *Service) DeletePostMedia(ctx context.Context, postID uuid.UUID) error {
 		_ = s.storage.Delete(ctx, u)
 	}
 	return nil
+}
+
+func (s *Service) TransformURL(url string, mediaType models.MediaType) string {
+	if mediaType != models.MediaTypeImage {
+		return url
+	}
+	query := strings.TrimSpace(s.cfg.ImageTransformQuery)
+	if query == "" {
+		return url
+	}
+	if strings.HasPrefix(query, "?") || strings.HasPrefix(query, "&") {
+		return url + query
+	}
+	if strings.Contains(url, "?") {
+		return url + "&" + query
+	}
+	return url + "?" + query
 }
 
 func (s *Service) detectMIME(file multipart.File) (string, error) {

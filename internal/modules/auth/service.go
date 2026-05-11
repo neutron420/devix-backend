@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"devix-backend/internal/config"
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/models"
 	"devix-backend/internal/pkg/email"
@@ -16,24 +17,32 @@ import (
 )
 
 type Service struct {
-	repo   *Repository
-	jwt    *jwtpkg.Manager
-	mailer *email.Mailer
-	log    zerolog.Logger
+	repo           *Repository
+	jwt            *jwtpkg.Manager
+	mailer         *email.Mailer
+	lockout        *LockoutService
+	passwordPolicy config.PasswordPolicyConfig
+	log            zerolog.Logger
 }
 
-func NewService(repo *Repository, jwt *jwtpkg.Manager, mailer *email.Mailer, log zerolog.Logger) *Service {
+func NewService(repo *Repository, jwt *jwtpkg.Manager, mailer *email.Mailer, lockout *LockoutService, policy config.PasswordPolicyConfig, log zerolog.Logger) *Service {
 	return &Service{
-		repo:   repo,
-		jwt:    jwt,
-		mailer: mailer,
-		log:    log.With().Str("module", "auth").Logger(),
+		repo:           repo,
+		jwt:            jwt,
+		mailer:         mailer,
+		lockout:        lockout,
+		passwordPolicy: policy,
+		log:            log.With().Str("module", "auth").Logger(),
 	}
 }
 
 func (s *Service) Signup(ctx context.Context, req *SignupRequest) (*AuthResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Username = strings.TrimSpace(req.Username)
+
+	if err := ValidatePassword(s.passwordPolicy, req.Password); err != nil {
+		return nil, apperrors.BadRequest(err.Error())
+	}
 
 	existing, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
@@ -102,9 +111,33 @@ func (s *Service) Signup(ctx context.Context, req *SignupRequest) (*AuthResponse
 	}, nil
 }
 
-func (s *Service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error) {
-	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+func (s *Service) Login(ctx context.Context, req *LoginRequest, clientIP string) (*AuthResponse, error) {
+	emailKey := strings.ToLower(strings.TrimSpace(req.Email))
+	lockoutEmailKey := "email:" + emailKey
+	lockoutIPKey := ""
+	if strings.TrimSpace(clientIP) != "" {
+		lockoutIPKey = "ip:" + strings.TrimSpace(clientIP)
+	}
+
+	if s.lockout != nil {
+		if retryAfter, locked := s.lockout.Check(ctx, s.lockout.NormalizeKey(lockoutEmailKey)); locked {
+			return nil, &LockoutError{RetryAfter: retryAfter}
+		}
+		if lockoutIPKey != "" {
+			if retryAfter, locked := s.lockout.Check(ctx, s.lockout.NormalizeKey(lockoutIPKey)); locked {
+				return nil, &LockoutError{RetryAfter: retryAfter}
+			}
+		}
+	}
+
+	user, err := s.repo.GetUserByEmail(ctx, emailKey)
 	if err != nil || user == nil {
+		if s.lockout != nil {
+			s.lockout.RegisterFailure(ctx, s.lockout.NormalizeKey(lockoutEmailKey))
+			if lockoutIPKey != "" {
+				s.lockout.RegisterFailure(ctx, s.lockout.NormalizeKey(lockoutIPKey))
+			}
+		}
 		return nil, apperrors.Unauthorized("Invalid credentials")
 	}
 
@@ -114,7 +147,19 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 
 	valid, err := hash.VerifyPassword(req.Password, user.PasswordHash)
 	if err != nil || !valid {
+		if s.lockout != nil {
+			s.lockout.RegisterFailure(ctx, s.lockout.NormalizeKey(lockoutEmailKey))
+			if lockoutIPKey != "" {
+				s.lockout.RegisterFailure(ctx, s.lockout.NormalizeKey(lockoutIPKey))
+			}
+		}
 		return nil, apperrors.Unauthorized("Invalid credentials")
+	}
+	if s.lockout != nil {
+		s.lockout.Clear(ctx, s.lockout.NormalizeKey(lockoutEmailKey))
+		if lockoutIPKey != "" {
+			s.lockout.Clear(ctx, s.lockout.NormalizeKey(lockoutIPKey))
+		}
 	}
 
 	tokenPair, err := s.jwt.GenerateTokenPair(user.ID, user.Username, user.Role)
@@ -240,6 +285,10 @@ func (s *Service) ResetPassword(ctx context.Context, token, newPassword string) 
 	}
 	if user == nil {
 		return apperrors.BadRequest("Invalid or expired reset token")
+	}
+
+	if err := ValidatePassword(s.passwordPolicy, newPassword); err != nil {
+		return apperrors.BadRequest(err.Error())
 	}
 
 	passwordHash, err := hash.HashPassword(newPassword)

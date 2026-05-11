@@ -21,6 +21,8 @@ type UpdatePostRequest struct {
 
 type FeedQuery struct {
 	Cursor   string `form:"cursor"`
+	After    string `form:"after"`
+	Before   string `form:"before"`
 	Limit    int    `form:"limit" binding:"omitempty,min=1,max=100"`
 	Type     string `form:"type" binding:"omitempty,post_type"`
 	Tag      string `form:"tag"`
@@ -76,6 +78,7 @@ type MediaResponse struct {
 type PostListResponse struct {
 	Posts   []PostResponse `json:"posts"`
 	Cursor  string         `json:"cursor,omitempty"`
+	PrevCursor string      `json:"prev_cursor,omitempty"`
 	HasMore bool           `json:"has_more"`
 }
 

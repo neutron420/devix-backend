@@ -2,6 +2,8 @@ package auth
 
 import (
 	"errors"
+	"net/http"
+	"strconv"
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/pkg/response"
@@ -45,8 +47,17 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Login(c.Request.Context(), &req)
+	result, err := h.service.Login(c.Request.Context(), &req, c.ClientIP())
 	if err != nil {
+		var lockoutErr *LockoutError
+		if errors.As(err, &lockoutErr) {
+			retryAfter := int(lockoutErr.RetryAfter.Seconds())
+			if retryAfter > 0 {
+				c.Header("Retry-After", strconv.Itoa(retryAfter))
+			}
+			response.Error(c, apperrors.Wrap(nil, apperrors.CodeTooManyReqs, "Too many login attempts. Please try again later", http.StatusTooManyRequests))
+			return
+		}
 		var appErr *apperrors.AppError
 		if errors.As(err, &appErr) {
 			response.Error(c, appErr)

@@ -27,6 +27,7 @@ type ErrorBody struct {
 
 type Meta struct {
 	Cursor  string `json:"cursor,omitempty"`
+	PrevCursor string `json:"prev_cursor,omitempty"`
 	HasMore bool   `json:"has_more"`
 	Total   *int64 `json:"total,omitempty"`
 }

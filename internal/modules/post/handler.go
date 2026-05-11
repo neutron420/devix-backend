@@ -71,6 +71,13 @@ func (h *Handler) ListFollowing(c *gin.Context) {
 		response.Error(c, apperrors.BadRequest("Invalid query parameters"))
 		return
 	}
+	if query.After == "" && query.Before == "" && query.Cursor != "" {
+		query.After = query.Cursor
+	}
+	if query.After != "" && query.Before != "" {
+		response.Error(c, apperrors.BadRequest("Use only one of 'after' or 'before'"))
+		return
+	}
 	result, err := h.service.ListFollowing(c.Request.Context(), userID, query)
 	if err != nil {
 		var appErr *apperrors.AppError
@@ -81,13 +88,20 @@ func (h *Handler) ListFollowing(c *gin.Context) {
 		response.Error(c, apperrors.Internal(err))
 		return
 	}
-	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, HasMore: result.HasMore})
+	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, PrevCursor: result.PrevCursor, HasMore: result.HasMore})
 }
 
 func (h *Handler) List(c *gin.Context) {
 	var query FeedQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid query parameters"))
+		return
+	}
+	if query.After == "" && query.Before == "" && query.Cursor != "" {
+		query.After = query.Cursor
+	}
+	if query.After != "" && query.Before != "" {
+		response.Error(c, apperrors.BadRequest("Use only one of 'after' or 'before'"))
 		return
 	}
 
@@ -106,13 +120,20 @@ func (h *Handler) List(c *gin.Context) {
 		response.Error(c, apperrors.Internal(err))
 		return
 	}
-	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, HasMore: result.HasMore})
+	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, PrevCursor: result.PrevCursor, HasMore: result.HasMore})
 }
 
 func (h *Handler) ListExplore(c *gin.Context) {
 	var query FeedQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid query parameters"))
+		return
+	}
+	if query.After == "" && query.Before == "" && query.Cursor != "" {
+		query.After = query.Cursor
+	}
+	if query.After != "" && query.Before != "" {
+		response.Error(c, apperrors.BadRequest("Use only one of 'after' or 'before'"))
 		return
 	}
 
@@ -131,7 +152,7 @@ func (h *Handler) ListExplore(c *gin.Context) {
 		response.Error(c, apperrors.Internal(err))
 		return
 	}
-	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, HasMore: result.HasMore})
+	response.OKWithMeta(c, result.Posts, &response.Meta{Cursor: result.Cursor, PrevCursor: result.PrevCursor, HasMore: result.HasMore})
 }
 
 

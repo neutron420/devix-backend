@@ -3,7 +3,7 @@ package auth
 type SignupRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=30,username"`
 	Email    string `json:"email" binding:"required,email,max=255"`
-	Password string `json:"password" binding:"required,min=8,max=128"`
+	Password string `json:"password" binding:"required,min=10,max=128"`
 }
 
 type LoginRequest struct {
@@ -45,5 +45,5 @@ type ForgotPasswordRequest struct {
 
 type ResetPasswordRequest struct {
 	Token    string `json:"token" binding:"required"`
-	Password string `json:"password" binding:"required,min=8,max=128"`
+	Password string `json:"password" binding:"required,min=10,max=128"`
 }

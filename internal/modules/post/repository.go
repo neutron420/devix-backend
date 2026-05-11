@@ -3,6 +3,7 @@ package post
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"devix-backend/internal/models"
@@ -66,19 +67,24 @@ func (r *Repository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.Po
 	if len(ids) == 0 {
 		return posts, false, nil
 	}
+	strIDs := make([]string, len(ids))
+	for i, id := range ids {
+		strIDs[i] = id.String()
+	}
 
 	err := r.db.WithContext(ctx).
 		Where("id IN ?", ids).
-		Order("created_at DESC").
+		Order(gorm.Expr("array_position(ARRAY[?]::uuid[], posts.id)", strIDs)).
 		Find(&posts).Error
 
 	return posts, false, err
 }
 
-
 func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, bool, error) {
 	limit := pagination.NormalizeLimit(query.Limit)
 	var posts []models.Post
+	useBefore := query.Before != ""
+	isTrending := query.Sort == "trending"
 
 	db := r.db.WithContext(ctx).
 		Table("posts").
@@ -112,24 +118,79 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 			Where("tags.slug = ?", query.Tag)
 	}
 
-	if query.Cursor != "" {
-		if decoded, err := pagination.DecodeCursor(query.Cursor); err == nil && decoded != nil {
-			db = db.Where("(posts.created_at, posts.id) < (?, ?)", decoded.CreatedAt, decoded.ID)
+	if query.After != "" || query.Before != "" {
+		cursor := query.After
+		if useBefore {
+			cursor = query.Before
+		}
+		if decoded, err := pagination.DecodeCursor(cursor); err == nil && decoded != nil {
+			if isTrending {
+				var cursorPost models.Post
+				err := r.db.WithContext(ctx).
+					Select("id", "author_id", "created_at", "vote_count", "comment_count", "view_count").
+					First(&cursorPost, "id = ?", decoded.ID).Error
+				if err == nil {
+					cursorScore := computeTrendingScore(cursorPost, time.Now())
+					boosted := false
+					if query.RequestUserID != uuid.Nil {
+						var count int64
+						_ = r.db.WithContext(ctx).
+							Model(&models.Follow{}).
+							Where("follower_id = ? AND following_id = ?", query.RequestUserID, cursorPost.AuthorID).
+							Count(&count).Error
+						boosted = count > 0
+					}
+					if boosted {
+						cursorScore *= 1.5
+					}
+					scoreExpr := "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / POWER(EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 + 2, 1.8)"
+					baseScoreExpr := scoreExpr
+					if query.RequestUserID != uuid.Nil {
+						baseScoreExpr = "CASE WHEN follows.follower_id IS NOT NULL THEN (" + scoreExpr + ") * 1.5 ELSE (" + scoreExpr + ") END"
+					}
+					if useBefore {
+						db = db.Where("("+baseScoreExpr+") > ? OR ("+baseScoreExpr+") = ? AND (posts.created_at, posts.id) > (?, ?)", cursorScore, cursorScore, cursorPost.CreatedAt, cursorPost.ID)
+					} else {
+						db = db.Where("("+baseScoreExpr+") < ? OR ("+baseScoreExpr+") = ? AND (posts.created_at, posts.id) < (?, ?)", cursorScore, cursorScore, cursorPost.CreatedAt, cursorPost.ID)
+					}
+				} else {
+					if useBefore {
+						db = db.Where("(posts.created_at, posts.id) > (?, ?)", decoded.CreatedAt, decoded.ID)
+					} else {
+						db = db.Where("(posts.created_at, posts.id) < (?, ?)", decoded.CreatedAt, decoded.ID)
+					}
+				}
+			} else {
+				if useBefore {
+					db = db.Where("(posts.created_at, posts.id) > (?, ?)", decoded.CreatedAt, decoded.ID)
+				} else {
+					db = db.Where("(posts.created_at, posts.id) < (?, ?)", decoded.CreatedAt, decoded.ID)
+				}
+			}
 		}
 	}
 
-	if query.Sort == "trending" {
+	if isTrending {
 		// Smart Score: (Votes*2 + Comments*3 + Views*0.1 + 1) / (HoursSinceCreation + 2)^1.8
 		scoreExpr := "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / POWER(EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 + 2, 1.8)"
+		baseScoreExpr := scoreExpr
 
 		if query.RequestUserID != uuid.Nil {
 			db = db.Joins("LEFT JOIN follows ON follows.following_id = posts.author_id AND follows.follower_id = ?", query.RequestUserID)
-			db = db.Order("CASE WHEN follows.follower_id IS NOT NULL THEN (" + scoreExpr + ") * 1.5 ELSE (" + scoreExpr + ") END DESC")
+			baseScoreExpr = "CASE WHEN follows.follower_id IS NOT NULL THEN (" + scoreExpr + ") * 1.5 ELSE (" + scoreExpr + ") END"
+		}
+
+		if useBefore {
+			db = db.Order(baseScoreExpr + " ASC, posts.created_at ASC, posts.id ASC")
 		} else {
-			db = db.Order("(" + scoreExpr + ") DESC")
+			db = db.Order(baseScoreExpr + " DESC, posts.created_at DESC, posts.id DESC")
 		}
 	} else {
-		db = db.Order("posts.created_at DESC, posts.id DESC")
+		if useBefore {
+			db = db.Order("posts.created_at ASC, posts.id ASC")
+		} else {
+			db = db.Order("posts.created_at DESC, posts.id DESC")
+		}
 	}
 
 	err := db.Limit(limit + 1).Find(&posts).Error
@@ -140,6 +201,12 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	hasMore := len(posts) > limit
 	if hasMore {
 		posts = posts[:limit]
+	}
+
+	if useBefore {
+		for i, j := 0, len(posts)-1; i < j; i, j = i+1, j-1 {
+			posts[i], posts[j] = posts[j], posts[i]
+		}
 	}
 
 	for i := range posts {
@@ -155,6 +222,12 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	}
 
 	return posts, hasMore, nil
+}
+
+func computeTrendingScore(post models.Post, now time.Time) float64 {
+	hours := now.Sub(post.CreatedAt).Hours()
+	numerator := (float64(post.VoteCount) * 2.0) + (float64(post.CommentCount) * 3.0) + (float64(post.ViewCount) * 0.1) + 1
+	return numerator / math.Pow(hours+2, 1.8)
 }
 
 func (r *Repository) Update(ctx context.Context, id uuid.UUID, title, content, externalLinks *string, status *string) error {

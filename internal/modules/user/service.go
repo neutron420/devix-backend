@@ -83,6 +83,24 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 	return res, nil
 }
 
+func (s *Service) GetPublicProfileByID(ctx context.Context, userID uuid.UUID) (*PublicProfileResponse, error) {
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil || user == nil {
+		return nil, err
+	}
+	return &PublicProfileResponse{
+		ID:          user.ID.String(),
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+		AvatarURL:   user.AvatarURL,
+		PostCount:   user.PostCount,
+		Reputation:  user.Reputation,
+		Level:       CalculateLevel(user.Reputation),
+		Badges:      CalculateBadges(user.Reputation),
+		CreatedAt:   user.CreatedAt.Format(time.RFC3339),
+	}, nil
+}
+
 func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req *UpdateProfileRequest) (*ProfileResponse, error) {
 
 	if req.Username != nil {

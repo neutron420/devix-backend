@@ -8,11 +8,11 @@ import (
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/models"
 	"devix-backend/internal/modules/media"
+	"devix-backend/internal/modules/search"
 	tagmod "devix-backend/internal/modules/tag"
 	"devix-backend/internal/pkg/cache"
 	"devix-backend/internal/pkg/pagination"
 	"devix-backend/internal/pkg/sanitize"
-	"devix-backend/internal/modules/search"
 	"devix-backend/internal/queue"
 
 	"github.com/google/uuid"
@@ -234,20 +234,15 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*PostResponse, err
 
 func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse, error) {
 	// Generate cache key based on query
-	cacheKey := fmt.Sprintf("posts:feed:%s:%s:%s:%s:%s", query.Sort, query.Type, query.Tag, query.AuthorID, query.Cursor)
+	cacheKey := fmt.Sprintf("posts:feed:%s:%s:%s:%s:%s:%s", query.Sort, query.Type, query.Tag, query.AuthorID, query.After, query.Before)
 	var cached PostListResponse
 	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
 		return &cached, nil
 	}
 
-	// If it's a search query, use Elasticsearch
-	if query.Search != "" && s.searchService != nil {
-		offset := 0
-		if query.Cursor != "" {
-			// Search uses simple offset, so we decode cursor to get offset if possible
-			// or just use 0 for now as a simple implementation.
-		}
-		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit, offset)
+	// If it's a search query, use Elasticsearch only for the first page
+	if query.Search != "" && s.searchService != nil && query.After == "" && query.Before == "" {
+		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit, 0)
 		if err == nil && len(esIDs) > 0 {
 			posts, _, err := s.repo.GetByIDs(ctx, esIDs)
 			if err == nil {
@@ -273,13 +268,27 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 		p.Tags = tags
 		responses = append(responses, *s.toResponse(&p))
 	}
-	var cursor string
-	if len(posts) > 0 && hasMore {
+	var nextCursor string
+	var prevCursor string
+	if len(posts) > 0 {
+		first := posts[0]
 		last := posts[len(posts)-1]
-		cursor = pagination.EncodeCursor(last.CreatedAt, last.ID.String())
+		if query.Before != "" {
+			nextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID.String())
+			if hasMore {
+				prevCursor = pagination.EncodeCursor(first.CreatedAt, first.ID.String())
+			}
+		} else {
+			if hasMore {
+				nextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID.String())
+			}
+			if query.After != "" {
+				prevCursor = pagination.EncodeCursor(first.CreatedAt, first.ID.String())
+			}
+		}
 	}
 
-	res := &PostListResponse{Posts: responses, Cursor: cursor, HasMore: hasMore}
+	res := &PostListResponse{Posts: responses, Cursor: nextCursor, PrevCursor: prevCursor, HasMore: hasMore}
 	// Cache feeds for shorter time
 	_ = s.cache.Set(ctx, cacheKey, res, 5*time.Minute)
 
@@ -308,7 +317,7 @@ func (s *Service) ListFollowing(ctx context.Context, userID uuid.UUID, query Fee
 }
 
 func (s *Service) ListExplore(ctx context.Context, userID uuid.UUID, query FeedQuery) (*PostListResponse, error) {
-	cacheKey := fmt.Sprintf("posts:explore:%s:%s:%s:%s", userID.String(), query.Type, query.Tag, query.Cursor)
+	cacheKey := fmt.Sprintf("posts:explore:%s:%s:%s:%s:%s", userID.String(), query.Type, query.Tag, query.After, query.Before)
 	var cached PostListResponse
 	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
 		return &cached, nil
@@ -426,7 +435,11 @@ func (s *Service) toResponse(p *models.Post) *PostResponse {
 		resp.Tags = append(resp.Tags, TagResponse{ID: t.ID.String(), Name: t.Name, Slug: t.Slug})
 	}
 	for _, m := range p.Media {
-		mr := MediaResponse{ID: m.ID.String(), FileURL: m.FileURL, FileType: string(m.FileType), FileSize: m.FileSize, MimeType: m.MimeType}
+		fileURL := m.FileURL
+		if s.mediaService != nil {
+			fileURL = s.mediaService.TransformURL(m.FileURL, m.FileType)
+		}
+		mr := MediaResponse{ID: m.ID.String(), FileURL: fileURL, FileType: string(m.FileType), FileSize: m.FileSize, MimeType: m.MimeType}
 		if m.OriginalName != nil {
 			mr.OriginalName = *m.OriginalName
 		}

@@ -6,13 +6,17 @@ import (
 	"devix-backend/internal/config"
 	"devix-backend/internal/middleware"
 	"devix-backend/internal/modules/activity"
+	"devix-backend/internal/modules/analytics"
 	"devix-backend/internal/modules/audit"
 	"devix-backend/internal/modules/auth"
 	"devix-backend/internal/modules/bookmark"
+	"devix-backend/internal/modules/chat"
 	"devix-backend/internal/modules/comment"
 	"devix-backend/internal/modules/follow"
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
+	"devix-backend/internal/modules/org"
+	"devix-backend/internal/modules/poll"
 	"devix-backend/internal/modules/post"
 	"devix-backend/internal/modules/report"
 	"devix-backend/internal/modules/tag"
@@ -22,6 +26,7 @@ import (
 	jwtpkg "devix-backend/internal/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
@@ -39,6 +44,10 @@ type Handlers struct {
 	Report       *report.Handler
 	Activity     *activity.Handler
 	WS           *websocket.Handler
+	Chat         *chat.Handler
+	Org          *org.Handler
+	Poll         *poll.Handler
+	Analytics    *analytics.Handler
 }
 
 func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, handlers *Handlers, redisClient *redis.Client, auditSvc *audit.Service) *gin.Engine {
@@ -63,6 +72,9 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger(log))
 	r.Use(middleware.CORS(cfg.CORS.Origins))
+	if cfg.Metrics.Enabled {
+		r.Use(middleware.Metrics())
+	}
 	r.Use(middleware.RedisRateLimit(redisLimiter, cfg.Rate.Requests, cfg.Rate.Window))
 	r.Use(middleware.Audit(auditSvc))
 
@@ -80,10 +92,9 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 		c.JSON(200, gin.H{"status": "ok", "service": "devix-backend"})
 	})
 
-	r.GET("/metrics", func(c *gin.Context) {
-		// Placeholder for Prometheus metrics
-		c.String(200, "# HELP devix_uptime Uptime of the service\n# TYPE devix_uptime counter\ndevix_uptime 1")
-	})
+	if cfg.Metrics.Enabled {
+		r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	}
 
 	r.GET("/ws", middleware.Auth(jwtManager), handlers.WS.ServeWS)
 
@@ -104,7 +115,10 @@ func Setup(cfg *config.Config, log zerolog.Logger, jwtManager *jwtpkg.Manager, h
 	follow.RegisterRoutes(v1, handlers.Follow, jwtManager)
 	report.RegisterRoutes(v1, handlers.Report, jwtManager)
 	activity.RegisterRoutes(v1, handlers.Activity, jwtManager)
-
+	chat.RegisterRoutes(v1, handlers.Chat, jwtManager)
+	org.RegisterRoutes(v1, handlers.Org, jwtManager)
+	poll.RegisterRoutes(v1, handlers.Poll, jwtManager)
+	analytics.RegisterRoutes(v1, handlers.Analytics, jwtManager)
 
 	return r
 }

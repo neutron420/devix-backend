@@ -12,16 +12,20 @@ import (
 	"devix-backend/internal/config"
 	"devix-backend/internal/database"
 	"devix-backend/internal/models"
+	"devix-backend/internal/modules/activity"
+	"devix-backend/internal/modules/analytics"
 	"devix-backend/internal/modules/audit"
 	"devix-backend/internal/modules/auth"
 	"devix-backend/internal/modules/bookmark"
+	"devix-backend/internal/modules/chat"
 	"devix-backend/internal/modules/comment"
 	"devix-backend/internal/modules/follow"
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/modules/notification"
+	"devix-backend/internal/modules/org"
+	"devix-backend/internal/modules/poll"
 	"devix-backend/internal/modules/post"
 	"devix-backend/internal/modules/report"
-	"devix-backend/internal/modules/activity"
 	"devix-backend/internal/modules/search"
 	"devix-backend/internal/modules/tag"
 	"devix-backend/internal/modules/user"
@@ -31,6 +35,7 @@ import (
 	"devix-backend/internal/pkg/email"
 	jwtpkg "devix-backend/internal/pkg/jwt"
 	"devix-backend/internal/pkg/logger"
+	"devix-backend/internal/pkg/pagination"
 	"devix-backend/internal/queue"
 	"devix-backend/internal/router"
 	"devix-backend/internal/validator"
@@ -72,6 +77,14 @@ func main() {
 		&models.AuditLog{},
 		&models.Report{},
 		&models.ActivityLog{},
+		&models.Conversation{},
+		&models.Message{},
+		&models.Organization{},
+		&models.OrgMember{},
+		&models.Poll{},
+		&models.PollOption{},
+		&models.PollVote{},
+		&models.AnalyticsEvent{},
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("auto-migration failed")
@@ -96,6 +109,7 @@ func main() {
 	appCache := cache.New(redis)
 
 	validator.Setup()
+	pagination.SetCursorSecret(cfg.Pagination.CursorSecret)
 
 	jwtManager := jwtpkg.NewManager(
 		cfg.JWT.AccessSecret,
@@ -118,6 +132,7 @@ func main() {
 	}
 
 	mailer := email.NewMailer(cfg.Email)
+	lockoutService := auth.NewLockoutService(redis, cfg.AuthLockout, log)
 
 	jobQueue := queue.New(redis, "devix-jobs", log)
 	jobQueue.Start(ctx, 3)
@@ -141,7 +156,7 @@ func main() {
 
 	wsService := wsmod.NewService(hub, log)
 	searchService := search.NewService(esClient, log)
-	authService := auth.NewService(authRepo, jwtManager, mailer, log)
+	authService := auth.NewService(authRepo, jwtManager, mailer, lockoutService, cfg.Password, log)
 	mediaService := media.NewService(mediaRepo, storage, cfg.Media, log)
 	userService := user.NewService(userRepo, appCache, log)
 	tagService := tag.NewService(tagRepo, appCache, log)
@@ -156,13 +171,17 @@ func main() {
 	reportService := report.NewService(reportRepo, log)
 	activityService := activity.NewService(activityRepo, log)
 	auditService := audit.NewService(db, log)
+	analyticsService := analytics.NewService(analytics.NewRepository(db), log)
+	chatService := chat.NewService(chat.NewRepository(db), userService, wsService, log)
+	orgService := org.NewService(org.NewRepository(db), log)
+	pollService := poll.NewService(poll.NewRepository(db), log)
 
 	handlers := &router.Handlers{
-		Auth:    auth.NewHandler(authService),
-		User:    user.NewHandler(userService, mediaService),
-		Post:    post.NewHandler(postService, mediaService),
-		Comment: comment.NewHandler(commentService),
-		Tag:     tag.NewHandler(tagService),
+		Auth:         auth.NewHandler(authService),
+		User:         user.NewHandler(userService, mediaService),
+		Post:         post.NewHandler(postService, mediaService),
+		Comment:      comment.NewHandler(commentService),
+		Tag:          tag.NewHandler(tagService),
 		Vote:         vote.NewHandler(voteService),
 		Notification: notification.NewHandler(notificationService),
 		Bookmark:     bookmark.NewHandler(bookmarkService),
@@ -170,6 +189,10 @@ func main() {
 		Report:       report.NewHandler(reportService),
 		Activity:     activity.NewHandler(activityService),
 		WS:           wsmod.NewHandler(hub),
+		Chat:         chat.NewHandler(chatService),
+		Org:          org.NewHandler(orgService),
+		Poll:         poll.NewHandler(pollService),
+		Analytics:    analytics.NewHandler(analyticsService),
 	}
 
 	engine := router.Setup(cfg, log, jwtManager, handlers, redis, auditService)

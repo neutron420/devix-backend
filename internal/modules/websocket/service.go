@@ -34,6 +34,14 @@ func (s *Service) NotifyUser(ctx context.Context, userID uuid.UUID, eventType st
 	})
 }
 
+func (s *Service) BroadcastTyping(userID, otherUserID uuid.UUID, isTyping bool) {
+	s.hub.NotifyTyping(userID, otherUserID, isTyping)
+}
+
+func (s *Service) IsOnline(ctx context.Context, userID uuid.UUID) bool {
+	return s.hub.IsUserOnline(ctx, userID)
+}
+
 func (s *Service) NotifyRoom(ctx context.Context, roomName string, eventType string, payload interface{}) {
 	s.log.Debug().Str("type", eventType).Str("room", roomName).Msg("notifying room via websocket")
 	s.hub.NotifyRoom(roomName, Message{

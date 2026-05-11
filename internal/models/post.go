@@ -27,6 +27,7 @@ const (
 type Post struct {
 	ID           uuid.UUID          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	AuthorID     uuid.UUID          `gorm:"type:uuid;not null;index"`
+	OrgID        *uuid.UUID         `gorm:"type:uuid;index"`
 	Author       *UserPublicProfile `gorm:"-"`
 	Title        string             `gorm:"size:300;not null"`
 	Slug         string             `gorm:"uniqueIndex;not null;size:350"`
