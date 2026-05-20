@@ -1,0 +1,766 @@
+openapi: 3.0.3
+info:
+  title: Devix Backend API
+  version: 1.0.0
+  description: HTTP API for auth, users, posts, comments, votes, notifications, organizations, chat, polls, reports, analytics, and activity.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+security:
+  - bearerAuth: []
+tags:
+  - name: System
+  - name: Auth
+  - name: Users
+  - name: Posts
+  - name: Comments
+  - name: Tags
+  - name: Votes
+  - name: Notifications
+  - name: Bookmarks
+  - name: Follow
+  - name: Reports
+  - name: Activity
+  - name: Chat
+  - name: Organizations
+  - name: Polls
+  - name: Analytics
+paths:
+  /:
+    get:
+      tags: [System]
+      security: []
+      summary: API welcome
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /health:
+    get:
+      tags: [System]
+      security: []
+      summary: Health check
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /metrics:
+    get:
+      tags: [System]
+      security: []
+      summary: Prometheus metrics, when enabled
+      responses:
+        "200":
+          description: Prometheus text exposition
+  /ws:
+    get:
+      tags: [System]
+      summary: Authenticated websocket connection
+      responses:
+        "101":
+          description: Switching protocols
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/signup:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Register a new user
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Authenticate a user
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Refresh access token
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Revoke a refresh token
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "204": { description: Logged out }
+  /api/v1/auth/verify-email:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Verify email token
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Request password reset
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Reset password with token
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "401": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Users]
+      summary: Update current user profile
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Users]
+      summary: Delete current account
+      responses:
+        "204": { description: Account deleted }
+  /api/v1/me/settings:
+    patch:
+      tags: [Users]
+      summary: Update current user settings
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/me/status:
+    patch:
+      tags: [Users]
+      summary: Activate or deactivate current account
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/me/avatar:
+    put:
+      tags: [Users]
+      summary: Upload current user avatar
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/users/{username}:
+    get:
+      tags: [Users]
+      security: []
+      summary: Get public user profile
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/users/{username}/followers:
+    get:
+      tags: [Follow]
+      security: []
+      summary: List user followers
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/users/{username}/following:
+    get:
+      tags: [Follow]
+      security: []
+      summary: List users followed by a user
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/users/{username}/follow:
+    post:
+      tags: [Follow]
+      summary: Follow a user
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "204": { description: Followed }
+    delete:
+      tags: [Follow]
+      summary: Unfollow a user
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "204": { description: Unfollowed }
+  /api/v1/posts:
+    get:
+      tags: [Posts]
+      security: []
+      summary: List published posts
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/After"
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Q"
+        - $ref: "#/components/parameters/Tag"
+      responses:
+        "200": { $ref: "#/components/responses/OKWithMeta" }
+    post:
+      tags: [Posts]
+      summary: Create a post
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/posts/{id}:
+    get:
+      tags: [Posts]
+      security: []
+      summary: Get post by slug
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    put:
+      tags: [Posts]
+      summary: Update a post
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Posts]
+      summary: Delete a post
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "204": { description: Deleted }
+  /api/v1/posts/drafts:
+    get:
+      tags: [Posts]
+      summary: List current user's drafts
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/posts/{id}/autosave:
+    patch:
+      tags: [Posts]
+      summary: Autosave a draft post
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/posts/{id}/media:
+    post:
+      tags: [Posts]
+      summary: Upload media to a post
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/feed:
+    get:
+      tags: [Posts]
+      security: []
+      summary: Alias for post feed
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Q"
+      responses:
+        "200": { $ref: "#/components/responses/OKWithMeta" }
+  /api/v1/feed/following:
+    get:
+      tags: [Posts]
+      summary: Following-only feed
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/OKWithMeta" }
+  /api/v1/feed/explore:
+    get:
+      tags: [Posts]
+      security: []
+      summary: Explore feed
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/OKWithMeta" }
+  /api/v1/search:
+    get:
+      tags: [Posts]
+      security: []
+      summary: Search posts
+      parameters:
+        - $ref: "#/components/parameters/Q"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200": { $ref: "#/components/responses/OKWithMeta" }
+  /api/v1/posts/{id}/comments:
+    get:
+      tags: [Comments]
+      security: []
+      summary: List post comments
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    post:
+      tags: [Comments]
+      summary: Create post comment
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/comments/{id}:
+    put:
+      tags: [Comments]
+      summary: Update comment
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Comments]
+      summary: Delete comment
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "204": { description: Deleted }
+  /api/v1/tags:
+    get:
+      tags: [Tags]
+      security: []
+      summary: List or search tags
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/tags/trending:
+    get:
+      tags: [Tags]
+      security: []
+      summary: List trending tags
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/tags/tree:
+    get:
+      tags: [Tags]
+      security: []
+      summary: List hierarchical tag tree
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/tags/category/{category}:
+    get:
+      tags: [Tags]
+      security: []
+      summary: List tags by category
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/posts/{id}/vote:
+    post:
+      tags: [Votes]
+      summary: Vote on post
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Votes]
+      summary: Remove post vote
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "204": { description: Vote removed }
+  /api/v1/comments/{id}/vote:
+    post:
+      tags: [Votes]
+      summary: Vote on comment
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Votes]
+      summary: Remove comment vote
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "204": { description: Vote removed }
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: List current user's notifications
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification read
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/notifications/read-all:
+    patch:
+      tags: [Notifications]
+      summary: Mark all notifications read
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/bookmarks:
+    get:
+      tags: [Bookmarks]
+      summary: List bookmarks
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/posts/{id}/bookmark:
+    post:
+      tags: [Bookmarks]
+      summary: Toggle post bookmark on
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Bookmarks]
+      summary: Toggle post bookmark off
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/reports:
+    get:
+      tags: [Reports]
+      summary: List all reports
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    post:
+      tags: [Reports]
+      summary: Create report
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/reports/pending:
+    get:
+      tags: [Reports]
+      summary: List pending reports
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/reports/{id}:
+    patch:
+      tags: [Reports]
+      summary: Review report
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/activity:
+    get:
+      tags: [Activity]
+      summary: List current user's activity
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/chat/messages:
+    post:
+      tags: [Chat]
+      summary: Send chat message
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/chat/conversations:
+    get:
+      tags: [Chat]
+      summary: List conversations
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/chat/conversations/{id}/messages:
+    get:
+      tags: [Chat]
+      summary: List conversation messages
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/chat/conversations/{id}/read:
+    patch:
+      tags: [Chat]
+      summary: Mark conversation messages read
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/chat/typing/{id}:
+    post:
+      tags: [Chat]
+      summary: Send typing indicator
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/organizations:
+    get:
+      tags: [Organizations]
+      security: []
+      summary: List organizations
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    post:
+      tags: [Organizations]
+      summary: Create organization
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/organizations/slug/{slug}:
+    get:
+      tags: [Organizations]
+      security: []
+      summary: Get organization by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/organizations/{id}:
+    get:
+      tags: [Organizations]
+      security: []
+      summary: Get organization by ID
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    put:
+      tags: [Organizations]
+      summary: Update organization
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    delete:
+      tags: [Organizations]
+      summary: Delete organization
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "204": { description: Deleted }
+  /api/v1/organizations/{id}/members:
+    get:
+      tags: [Organizations]
+      security: []
+      summary: List organization members
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+    post:
+      tags: [Organizations]
+      summary: Add organization member
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "204": { description: Added }
+  /api/v1/organizations/{id}/members/{user_id}:
+    delete:
+      tags: [Organizations]
+      summary: Remove organization member
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Removed }
+  /api/v1/polls:
+    post:
+      tags: [Polls]
+      summary: Create poll
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/polls/{id}/vote:
+    post:
+      tags: [Polls]
+      summary: Vote in poll
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+  /api/v1/analytics/posts/{id}:
+    get:
+      tags: [Analytics]
+      summary: Get post analytics
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    Username:
+      name: username
+      in: path
+      required: true
+      schema: { type: string }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    After:
+      name: after
+      in: query
+      schema: { type: string }
+    Before:
+      name: before
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Q:
+      name: q
+      in: query
+      schema: { type: string }
+    Tag:
+      name: tag
+      in: query
+      schema: { type: string }
+  requestBodies:
+    JSON:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+  responses:
+    OK:
+      description: Successful response
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SuccessResponse" }
+    OKWithMeta:
+      description: Successful response with pagination metadata
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SuccessResponse" }
+    Created:
+      description: Created
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SuccessResponse" }
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          nullable: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+    Meta:
+      type: object
+      properties:
+        cursor: { type: string }
+        prev_cursor: { type: string }
+        has_more: { type: boolean }
+        total: { type: integer, format: int64 }
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }

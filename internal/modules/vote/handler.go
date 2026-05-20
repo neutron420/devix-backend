@@ -76,6 +76,30 @@ func (h *Handler) VoteOnComment(c *gin.Context) {
 	response.OK(c, gin.H{"vote_type": req.VoteType, "new_count": newCount})
 }
 
+func (h *Handler) RemoveCommentVote(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("Authentication required"))
+		return
+	}
+	commentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.BadRequest("Invalid comment ID"))
+		return
+	}
+	newCount, err := h.service.RemoveCommentVote(c.Request.Context(), userID, commentID)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			response.Error(c, appErr)
+			return
+		}
+		response.Error(c, apperrors.Internal(err))
+		return
+	}
+	response.OK(c, gin.H{"new_count": newCount})
+}
+
 func (h *Handler) RemovePostVote(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {

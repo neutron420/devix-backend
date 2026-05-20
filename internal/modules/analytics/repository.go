@@ -28,23 +28,53 @@ func (r *Repository) GetPostStats(ctx context.Context, postID uuid.UUID) (*PostA
 	stats.OS = make(map[string]int64)
 	stats.Referrers = make(map[string]int64)
 
-	// Total views
-	r.db.WithContext(ctx).Model(&models.AnalyticsEvent{}).
-		Where("target_id = ?", postID).Count(&stats.TotalViews)
-
-	// Group by Country
-	rows, _ := r.db.WithContext(ctx).Model(&models.AnalyticsEvent{}).
-		Select("country, count(*) as count").
-		Where("target_id = ?", postID).Group("country").Rows()
-	defer rows.Close()
-	for rows.Next() {
-		var country string
-		var count int64
-		rows.Scan(&country, &count)
-		stats.Countries[country] = count
+	if err := r.db.WithContext(ctx).Model(&models.AnalyticsEvent{}).
+		Where("target_id = ? AND type = ?", postID, "view").
+		Count(&stats.TotalViews).Error; err != nil {
+		return nil, err
 	}
 
-	// Repeat for others...
-	// (Simplified for brevity, usually done in a single query or async worker)
+	if err := r.groupCounts(ctx, postID, "country", stats.Countries); err != nil {
+		return nil, err
+	}
+	if err := r.groupCounts(ctx, postID, "device", stats.Devices); err != nil {
+		return nil, err
+	}
+	if err := r.groupCounts(ctx, postID, "browser", stats.Browsers); err != nil {
+		return nil, err
+	}
+	if err := r.groupCounts(ctx, postID, "os", stats.OS); err != nil {
+		return nil, err
+	}
+	if err := r.groupCounts(ctx, postID, "referrer", stats.Referrers); err != nil {
+		return nil, err
+	}
+
 	return &stats, nil
+}
+
+func (r *Repository) groupCounts(ctx context.Context, targetID uuid.UUID, column string, dest map[string]int64) error {
+	type groupedCount struct {
+		Key   string
+		Count int64
+	}
+
+	var rows []groupedCount
+	if err := r.db.WithContext(ctx).Model(&models.AnalyticsEvent{}).
+		Select(column+" AS key, count(*) AS count").
+		Where("target_id = ? AND type = ?", targetID, "view").
+		Group(column).
+		Scan(&rows).Error; err != nil {
+		return err
+	}
+
+	for _, row := range rows {
+		key := row.Key
+		if key == "" {
+			key = "unknown"
+		}
+		dest[key] = row.Count
+	}
+
+	return nil
 }

@@ -1,7 +1,10 @@
 package analytics
 
 import (
+	"context"
 	"errors"
+	"strings"
+	"time"
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/pkg/response"
@@ -55,9 +58,20 @@ func (h *Handler) TrackViewMiddleware() gin.HandlerFunc {
 
 		ua := c.GetHeader("User-Agent")
 		ip := c.ClientIP()
+		country := strings.TrimSpace(c.GetHeader("CF-IPCountry"))
+		if country == "" {
+			country = strings.TrimSpace(c.GetHeader("X-Country"))
+		}
 		referrer := c.GetHeader("Referer")
+		if referrer == "" {
+			referrer = c.GetHeader("Referrer")
+		}
 
-		go h.service.TrackView(c.Request.Context(), postID, ua, ip, referrer)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			h.service.TrackView(ctx, postID, ua, ip, country, referrer)
+		}()
 		c.Next()
 	}
 }

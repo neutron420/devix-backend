@@ -61,6 +61,9 @@ func (s *Service) Follow(ctx context.Context, followerID uuid.UUID, targetUserna
 		return apperrors.Internal(err)
 	}
 
+	s.userService.InvalidateProfileCacheByID(ctx, targetUserID)
+	s.userService.InvalidateProfileCacheByID(ctx, followerID)
+
 	// Trigger Notification
 	go func() {
 		_ = s.notifService.CreateNotification(context.Background(), targetUserID, followerID, followerID, "followed")
@@ -79,7 +82,13 @@ func (s *Service) Unfollow(ctx context.Context, followerID uuid.UUID, targetUser
 	}
 
 	targetUserID, _ := uuid.Parse(targetUser.ID)
-	return s.repo.Unfollow(ctx, followerID, targetUserID)
+	if err := s.repo.Unfollow(ctx, followerID, targetUserID); err != nil {
+		return err
+	}
+
+	s.userService.InvalidateProfileCacheByID(ctx, targetUserID)
+	s.userService.InvalidateProfileCacheByID(ctx, followerID)
+	return nil
 }
 
 func (s *Service) GetFollowers(ctx context.Context, username string) ([]UserProfileResponse, error) {

@@ -180,7 +180,7 @@ Use a single shared `apiClient` with:
 
 ### 8) Post Detail
 - Route: `/post/[id]`
-- API: `GET /posts/:id` (backend uses slug in handler)
+- API: `GET /posts/:id` (backend expects a slug in this path)
 - UI:
   - Author header with follow button
   - Post type badge, title, full content markdown
@@ -189,6 +189,7 @@ Use a single shared `apiClient` with:
   - Actions: vote, comment, bookmark, share, report
 
 Related actions:
+- Use the `id` (UUID) from the post response for vote, comment, and bookmark actions
 - Vote: `POST /posts/:id/vote` and `DELETE /posts/:id/vote`
 - Bookmark: `POST /posts/:id/bookmark` and `DELETE /posts/:id/bookmark`
 - Report: `POST /reports`
@@ -202,11 +203,12 @@ Related actions:
   - `PUT /comments/:id`
   - `DELETE /comments/:id`
   - `POST /comments/:id/vote`
+  - `DELETE /comments/:id/vote`
 - UI:
   - Threaded comments with indentation
   - Composer with reply support
   - Vote and moderation actions
-- WebSocket: listen for `comment:new` events
+- WebSocket: join room `post:{postId}` and listen for `new_comment`
 
 ---
 
@@ -216,7 +218,7 @@ Related actions:
 - UI:
   - Post type selector, title, markdown editor, tags autocomplete, media upload
   - Publish or Save as Draft
-- Tags autocomplete: `GET /tags?query=...` (use `GET /tags` and filter if query not supported)
+- Tags autocomplete: `GET /tags?q=search_term&limit=50`
 
 ### 11) Edit Post
 - Route: `/post/[id]/edit`
@@ -242,6 +244,7 @@ Related actions:
   - Drafts: `GET /posts/drafts`
   - Bookmarks: `GET /bookmarks`
   - Activity: `GET /activity`
+  - Followers/Following counts are included in profile responses
 
 ### 14) Edit Profile
 - Route: `/profile/edit`
@@ -274,7 +277,9 @@ Related actions:
   - List of notifications
   - Unread highlight
   - Mark all as read
-- WebSocket: `notification:new` event
+- Pagination: `GET /notifications?page=1&limit=20` (page-based, not cursor)
+- Response includes `unread_count` for badge display
+- WebSocket: `new_notification` event
 
 ### 17) Chat List
 - Route: `/chat`
@@ -289,13 +294,13 @@ Related actions:
   - `PATCH /chat/conversations/:id/read`
   - `POST /chat/typing/:id`
 - UI: message list, input, typing indicator
-- WebSocket: `chat:message`, `chat:typing`, `presence:online`, `presence:offline`
+- WebSocket: `new_message`, `chat:typing`, `chat:read`, `presence:online`, `presence:offline`
 
 ---
 
 ### 19) Search
 - Route: `/search`
-- API: `GET /posts?q=search_term&limit=20&cursor=`
+- API: `GET /posts?q=search_term&limit=20&cursor=` or `GET /search?q=search_term&limit=20&cursor=`
 - UI:
   - Search input with debounce
   - Trending tags before search: `GET /tags/trending`
@@ -347,6 +352,7 @@ Related actions:
 - Route: `/org/[id]`
 - API:
   - `POST /organizations`
+  - `GET /organizations/:id`
   - `GET /organizations/:id/members`
   - `POST /organizations/:id/members`
 - UI: org header and members list
@@ -389,11 +395,12 @@ The post card must support:
 - Reconnect on disconnect with backoff
 - Refresh token on 401 or expired token and reconnect
 - Events to handle:
-  - `notification:new`
-  - `chat:message`
+  - `new_notification`
+  - `new_message`
   - `chat:typing`
+  - `chat:read`
   - `presence:online`, `presence:offline`
-  - `comment:new`
+  - `new_comment` (room `post:{postId}`; send `join_room` with that room name)
 
 ---
 
@@ -416,6 +423,7 @@ The post card must support:
 - Use cursor pagination for feeds and list pages
 - Store `cursor` and `has_more` from API responses
 - Keep list state in URL with query parameters when possible
+- Notifications use `page` and `limit`, not cursor
 
 ---
 

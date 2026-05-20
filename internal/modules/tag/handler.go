@@ -2,6 +2,8 @@ package tag
 
 import (
 	"errors"
+	"strconv"
+	"strings"
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/pkg/response"
@@ -17,6 +19,26 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) GetAll(c *gin.Context) {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		q = strings.TrimSpace(c.Query("query"))
+	}
+	if q != "" {
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+		result, err := h.service.Search(c.Request.Context(), q, limit)
+		if err != nil {
+			var appErr *apperrors.AppError
+			if errors.As(err, &appErr) {
+				response.Error(c, appErr)
+				return
+			}
+			response.Error(c, apperrors.Internal(err))
+			return
+		}
+		response.OK(c, result)
+		return
+	}
+
 	result, err := h.service.GetAll(c.Request.Context())
 	if err != nil {
 		var appErr *apperrors.AppError

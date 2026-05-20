@@ -1,25 +1,32 @@
 package user
 
 import (
+	"context"
 	"errors"
+	"strings"
+	"time"
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/middleware"
+	"devix-backend/internal/modules/analytics"
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
 	service      *Service
 	mediaService *media.Service
+	analyticsService *analytics.Service
 }
 
-func NewHandler(service *Service, mediaService *media.Service) *Handler {
+func NewHandler(service *Service, mediaService *media.Service, analyticsService *analytics.Service) *Handler {
 	return &Handler{
 		service:      service,
 		mediaService: mediaService,
+		analyticsService: analyticsService,
 	}
 }
 
@@ -72,7 +79,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 }
 
 func (h *Handler) UpdateSettings(c *gin.Context) {
-	h.UpdateMe(c) // Reusing the same logic for now as it covers all fields
+	h.UpdateMe(c)
 }
 
 func (h *Handler) DeleteMe(c *gin.Context) {
@@ -183,4 +190,27 @@ func (h *Handler) GetPublicProfile(c *gin.Context) {
 	}
 
 	response.OK(c, profile)
+
+	if h.analyticsService == nil {
+		return
+	}
+	userID, err := uuid.Parse(profile.ID)
+	if err != nil {
+		return
+	}
+	ua := c.GetHeader("User-Agent")
+	referrer := c.GetHeader("Referer")
+	if referrer == "" {
+		referrer = c.GetHeader("Referrer")
+	}
+	country := strings.TrimSpace(c.GetHeader("CF-IPCountry"))
+	if country == "" {
+		country = strings.TrimSpace(c.GetHeader("X-Country"))
+	}
+	ip := c.ClientIP()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		h.analyticsService.TrackView(ctx, userID, ua, ip, country, referrer)
+	}()
 }

@@ -56,6 +56,15 @@ func (r *Repository) GetUnreadCount(ctx context.Context, userID uuid.UUID) (int6
 	return count, err
 }
 
+func (r *Repository) CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.Notification{}).
+		Where("user_id = ?", userID).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *Repository) MarkAsRead(ctx context.Context, userID, notificationID uuid.UUID) error {
 	return r.db.WithContext(ctx).
 		Model(&models.Notification{}).

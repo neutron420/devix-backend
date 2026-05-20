@@ -21,5 +21,9 @@ type ActorResponse struct {
 
 type NotificationListResponse struct {
 	Notifications []NotificationResponse `json:"notifications"`
-	UnreadCount   int64                 `json:"unread_count"`
+	UnreadCount   int64                  `json:"unread_count"`
+	Page          int                    `json:"page"`
+	Limit         int                    `json:"limit"`
+	Total         int64                  `json:"total"`
+	HasMore       bool                   `json:"has_more"`
 }

@@ -1,10 +1,14 @@
 package post
 
 import (
+	"context"
 	"errors"
+	"strings"
+	"time"
 
 	apperrors "devix-backend/internal/errors"
 	"devix-backend/internal/middleware"
+	"devix-backend/internal/modules/analytics"
 	"devix-backend/internal/modules/media"
 	"devix-backend/internal/pkg/response"
 
@@ -15,10 +19,11 @@ import (
 type Handler struct {
 	service      *Service
 	mediaService *media.Service
+	analyticsService *analytics.Service
 }
 
-func NewHandler(service *Service, mediaService *media.Service) *Handler {
-	return &Handler{service: service, mediaService: mediaService}
+func NewHandler(service *Service, mediaService *media.Service, analyticsService *analytics.Service) *Handler {
+	return &Handler{service: service, mediaService: mediaService, analyticsService: analyticsService}
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -58,6 +63,29 @@ func (h *Handler) GetBySlug(c *gin.Context) {
 		return
 	}
 	response.OK(c, result)
+
+	if h.analyticsService == nil {
+		return
+	}
+	postID, err := uuid.Parse(result.ID)
+	if err != nil {
+		return
+	}
+	ua := c.GetHeader("User-Agent")
+	referrer := c.GetHeader("Referer")
+	if referrer == "" {
+		referrer = c.GetHeader("Referrer")
+	}
+	country := strings.TrimSpace(c.GetHeader("CF-IPCountry"))
+	if country == "" {
+		country = strings.TrimSpace(c.GetHeader("X-Country"))
+	}
+	ip := c.ClientIP()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		h.analyticsService.TrackView(ctx, postID, ua, ip, country, referrer)
+	}()
 }
 
 func (h *Handler) ListFollowing(c *gin.Context) {

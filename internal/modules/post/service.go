@@ -3,6 +3,7 @@ package post
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	apperrors "devix-backend/internal/errors"
@@ -53,6 +54,10 @@ func NewService(repo *Repository, mediaService *media.Service, tagService *tagmo
 }
 
 func (s *Service) handleSyncPostSearch(ctx context.Context, payload interface{}) error {
+	if s.searchService == nil {
+		return nil
+	}
+
 	var postID uuid.UUID
 	switch v := payload.(type) {
 	case uuid.UUID:
@@ -233,17 +238,37 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*PostResponse, err
 }
 
 func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse, error) {
+	query.Limit = pagination.NormalizeLimit(query.Limit)
+
 	// Generate cache key based on query
-	cacheKey := fmt.Sprintf("posts:feed:%s:%s:%s:%s:%s:%s", query.Sort, query.Type, query.Tag, query.AuthorID, query.After, query.Before)
+	cacheKey := fmt.Sprintf(
+		"posts:feed:%s:%s:%s:%s:%s:%s:%s:%d:%d:%s:%s:%s",
+		query.Sort,
+		query.Type,
+		query.Tag,
+		query.AuthorID,
+		query.Search,
+		query.After,
+		query.Before,
+		query.Offset,
+		query.Limit,
+		query.RequestUserID.String(),
+		strings.Join(query.AuthorIDs, ","),
+		strings.Join(query.ExcludeAuthorIDs, ","),
+	)
 	var cached PostListResponse
 	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
 		return &cached, nil
 	}
 
-	// If it's a search query, use Elasticsearch only for the first page
+	// If it's a search query, use Elasticsearch for bounded offset paging when available.
 	if query.Search != "" && s.searchService != nil && query.After == "" && query.Before == "" {
-		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit, 0)
+		esIDs, err := s.searchService.SearchPosts(ctx, query.Search, query.Limit+1, query.Offset)
 		if err == nil && len(esIDs) > 0 {
+			hasMore := len(esIDs) > query.Limit
+			if hasMore {
+				esIDs = esIDs[:query.Limit]
+			}
 			posts, _, err := s.repo.GetByIDs(ctx, esIDs)
 			if err == nil {
 				responses := make([]PostResponse, 0, len(posts))
@@ -252,8 +277,9 @@ func (s *Service) List(ctx context.Context, query FeedQuery) (*PostListResponse,
 					p.Tags = tags
 					responses = append(responses, *s.toResponse(&p))
 				}
-				hasMore := len(responses) == query.Limit
-				return &PostListResponse{Posts: responses, HasMore: hasMore}, nil
+				res := &PostListResponse{Posts: responses, HasMore: hasMore}
+				_ = s.cache.Set(ctx, cacheKey, res, 5*time.Minute)
+				return res, nil
 			}
 		}
 	}
@@ -317,7 +343,8 @@ func (s *Service) ListFollowing(ctx context.Context, userID uuid.UUID, query Fee
 }
 
 func (s *Service) ListExplore(ctx context.Context, userID uuid.UUID, query FeedQuery) (*PostListResponse, error) {
-	cacheKey := fmt.Sprintf("posts:explore:%s:%s:%s:%s:%s", userID.String(), query.Type, query.Tag, query.After, query.Before)
+	query.Limit = pagination.NormalizeLimit(query.Limit)
+	cacheKey := fmt.Sprintf("posts:explore:%s:%s:%s:%s:%s:%d", userID.String(), query.Type, query.Tag, query.After, query.Before, query.Limit)
 	var cached PostListResponse
 	if ok, _ := s.cache.Get(ctx, cacheKey, &cached); ok {
 		return &cached, nil

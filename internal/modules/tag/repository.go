@@ -3,6 +3,7 @@ package tag
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"devix-backend/internal/models"
@@ -22,6 +23,25 @@ func NewRepository(db *gorm.DB) *Repository {
 func (r *Repository) GetAll(ctx context.Context) ([]models.Tag, error) {
 	var tags []models.Tag
 	err := r.db.WithContext(ctx).Order("post_count desc, name asc").Find(&tags).Error
+	return tags, err
+}
+
+func (r *Repository) Search(ctx context.Context, query string, limit int) ([]models.Tag, error) {
+	var tags []models.Tag
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return tags, nil
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	pattern := "%" + q + "%"
+	err := r.db.WithContext(ctx).
+		Where("LOWER(name) LIKE ? OR LOWER(slug) LIKE ? OR LOWER(synonyms) LIKE ? OR LOWER(category) LIKE ? OR LOWER(description) LIKE ?",
+			pattern, pattern, pattern, pattern, pattern).
+		Order("post_count desc, name asc").
+		Limit(limit).
+		Find(&tags).Error
 	return tags, err
 }
 

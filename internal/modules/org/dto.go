@@ -28,8 +28,18 @@ type OrgResponse struct {
 type OrgMemberResponse struct {
 	UserID   string    `json:"user_id"`
 	Username string    `json:"username"`
+	DisplayName string `json:"display_name"`
+	AvatarURL   string `json:"avatar_url"`
 	Role     string    `json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
+}
+
+type OrgListResponse struct {
+	Organizations []OrgResponse `json:"organizations"`
+	Page          int           `json:"page"`
+	Limit         int           `json:"limit"`
+	Total         int64         `json:"total"`
+	HasMore       bool          `json:"has_more"`
 }
 
 type AddMemberRequest struct {

@@ -24,6 +24,7 @@ type FeedQuery struct {
 	After    string `form:"after"`
 	Before   string `form:"before"`
 	Limit    int    `form:"limit" binding:"omitempty,min=1,max=100"`
+	Offset   int    `form:"offset" binding:"omitempty,min=0"`
 	Type     string `form:"type" binding:"omitempty,post_type"`
 	Tag      string `form:"tag"`
 	AuthorID  string `form:"author_id"`

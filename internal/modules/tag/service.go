@@ -56,6 +56,23 @@ func (s *Service) GetAll(ctx context.Context) ([]TagResponse, error) {
 	return result, nil
 }
 
+func (s *Service) Search(ctx context.Context, query string, limit int) ([]TagResponse, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	tags, err := s.repo.Search(ctx, query, limit)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+
+	result := make([]TagResponse, 0, len(tags))
+	for _, t := range tags {
+		result = append(result, s.toResponse(&t))
+	}
+	return result, nil
+}
+
 func (s *Service) FindOrCreateByNames(ctx context.Context, names []string) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
 	for _, name := range names {

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	apperrors "devix-backend/internal/errors"
@@ -26,7 +27,11 @@ func (s *Service) GetByUsername(ctx context.Context, username string) (*ProfileR
 	if user == nil {
 		return nil, nil
 	}
-	return s.toResponse(user), nil
+	res, err := s.toResponse(ctx, user)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	return res, nil
 }
 
 func NewService(repo *Repository, cache *cache.Cache, log zerolog.Logger) *Service {
@@ -47,7 +52,11 @@ func (s *Service) GetMyProfile(ctx context.Context, userID uuid.UUID) (*ProfileR
 		return nil, apperrors.NotFound("User")
 	}
 
-	return s.toResponse(user), nil
+	res, err := s.toResponse(ctx, user)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	return res, nil
 }
 
 func (s *Service) GetPublicProfile(ctx context.Context, username string) (*PublicProfileResponse, error) {
@@ -65,6 +74,14 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 	if user == nil {
 		return nil, apperrors.NotFound("User")
 	}
+	followerCount, err := s.repo.CountFollowers(ctx, user.ID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	followingCount, err := s.repo.CountFollowing(ctx, user.ID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
 
 	res := &PublicProfileResponse{
 		ID:          user.ID.String(),
@@ -73,6 +90,8 @@ func (s *Service) GetPublicProfile(ctx context.Context, username string) (*Publi
 		Bio:         user.Bio,
 		AvatarURL:   user.AvatarURL,
 		PostCount:   user.PostCount,
+		FollowerCount: followerCount,
+		FollowingCount: followingCount,
 		Reputation:  user.Reputation,
 		Level:       CalculateLevel(user.Reputation),
 		Badges:      CalculateBadges(user.Reputation),
@@ -88,12 +107,22 @@ func (s *Service) GetPublicProfileByID(ctx context.Context, userID uuid.UUID) (*
 	if err != nil || user == nil {
 		return nil, err
 	}
+	followerCount, err := s.repo.CountFollowers(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	followingCount, err := s.repo.CountFollowing(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &PublicProfileResponse{
 		ID:          user.ID.String(),
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
 		AvatarURL:   user.AvatarURL,
 		PostCount:   user.PostCount,
+		FollowerCount: followerCount,
+		FollowingCount: followingCount,
 		Reputation:  user.Reputation,
 		Level:       CalculateLevel(user.Reputation),
 		Badges:      CalculateBadges(user.Reputation),
@@ -144,7 +173,15 @@ func (s *Service) UpdateStatus(ctx context.Context, userID uuid.UUID, isActive b
 	return nil
 }
 
-func (s *Service) toResponse(user *models.User) *ProfileResponse {
+func (s *Service) toResponse(ctx context.Context, user *models.User) (*ProfileResponse, error) {
+	followerCount, err := s.repo.CountFollowers(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	followingCount, err := s.repo.CountFollowing(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &ProfileResponse{
 		ID:          user.ID.String(),
 		Username:    user.Username,
@@ -160,11 +197,13 @@ func (s *Service) toResponse(user *models.User) *ProfileResponse {
 		Role:        user.Role,
 		IsVerified:  user.IsVerified,
 		PostCount:   user.PostCount,
+		FollowerCount: followerCount,
+		FollowingCount: followingCount,
 		Reputation:  user.Reputation,
 		Level:       CalculateLevel(user.Reputation),
 		Badges:      CalculateBadges(user.Reputation),
 		CreatedAt:   user.CreatedAt.Format(time.RFC3339),
-	}
+	}, nil
 }
 
 func (s *Service) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) (*ProfileResponse, error) {
@@ -180,6 +219,21 @@ func (s *Service) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL 
 	}
 
 	return s.GetMyProfile(ctx, userID)
+}
+
+func (s *Service) InvalidatePublicProfileCache(ctx context.Context, username string) {
+	if strings.TrimSpace(username) == "" {
+		return
+	}
+	_ = s.cache.Delete(ctx, "users:profile:"+username)
+}
+
+func (s *Service) InvalidateProfileCacheByID(ctx context.Context, userID uuid.UUID) {
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil || user == nil {
+		return
+	}
+	_ = s.cache.Delete(ctx, "users:profile:"+user.Username)
 }
 
 func (s *Service) AdjustReputation(ctx context.Context, userID uuid.UUID, points int) error {

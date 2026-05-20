@@ -48,8 +48,10 @@ func (s *Service) VoteOnPost(ctx context.Context, userID, postID uuid.UUID, vote
 			return
 		}
 		if voteType > 0 {
-			if err := s.notifService.CreateNotification(context.Background(), authorID, userID, postID, "post_voted"); err != nil {
-				s.log.Warn().Err(err).Msg("failed to create post vote notification")
+			if s.notifService != nil {
+				if err := s.notifService.CreateNotification(context.Background(), authorID, userID, postID, "post_voted"); err != nil {
+					s.log.Warn().Err(err).Msg("failed to create post vote notification")
+				}
 			}
 			if s.userService != nil {
 				if err := s.userService.AdjustReputation(context.Background(), authorID, 5); err != nil {
@@ -84,8 +86,10 @@ func (s *Service) VoteOnComment(ctx context.Context, userID, commentID uuid.UUID
 			return
 		}
 		if voteType > 0 {
-			if err := s.notifService.CreateNotification(context.Background(), authorID, userID, commentID, "comment_voted"); err != nil {
-				s.log.Warn().Err(err).Msg("failed to create comment vote notification")
+			if s.notifService != nil {
+				if err := s.notifService.CreateNotification(context.Background(), authorID, userID, commentID, "comment_voted"); err != nil {
+					s.log.Warn().Err(err).Msg("failed to create comment vote notification")
+				}
 			}
 			if s.userService != nil {
 				if err := s.userService.AdjustReputation(context.Background(), authorID, 2); err != nil {

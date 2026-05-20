@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 )
 
 const PostIndex = "posts"
+const maxResultWindow = 10000
 
 type Service struct {
 	es  *elasticsearch.Client
@@ -117,6 +119,12 @@ func (s *Service) SearchPosts(ctx context.Context, query string, limit, offset i
 	}
 	if limit <= 0 {
 		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if offset+limit > maxResultWindow {
+		return nil, fmt.Errorf("search offset exceeds elasticsearch result window")
 	}
 
 	var buf bytes.Buffer

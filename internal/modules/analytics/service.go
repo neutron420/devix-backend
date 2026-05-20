@@ -2,6 +2,9 @@ package analytics
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
 	"time"
 
 	"devix-backend/internal/models"
@@ -22,18 +25,25 @@ func NewService(repo *Repository, log zerolog.Logger) *Service {
 	}
 }
 
-func (s *Service) TrackView(ctx context.Context, targetID uuid.UUID, uaString, ip, referrer string) {
+func (s *Service) TrackView(ctx context.Context, targetID uuid.UUID, uaString, ip, country, referrer string) {
 	ua := user_agent.New(uaString)
 	browser, version := ua.Browser()
-	
+	ipHash := ""
+	if strings.TrimSpace(ip) != "" {
+		sum := sha256.Sum256([]byte(ip))
+		ipHash = hex.EncodeToString(sum[:])
+	}
+
 	event := &models.AnalyticsEvent{
 		ID:        uuid.New(),
 		TargetID:  targetID,
 		Type:      "view",
+		Country:   strings.TrimSpace(country),
 		Browser:   browser + " " + version,
 		OS:        ua.OS(),
-		Device:    "Desktop", // Simplified
+		Device:    "Desktop",
 		Referrer:  referrer,
+		IPHash:    ipHash,
 		CreatedAt: time.Now(),
 	}
 	if ua.Mobile() {

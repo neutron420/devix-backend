@@ -91,3 +91,15 @@ func (r *Repository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarU
 func (r *Repository) AdjustReputation(ctx context.Context, userID uuid.UUID, points int) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("reputation", gorm.Expr("reputation + ?", points)).Error
 }
+
+func (r *Repository) CountFollowers(ctx context.Context, userID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.Follow{}).Where("following_id = ?", userID).Count(&count).Error
+	return count, err
+}
+
+func (r *Repository) CountFollowing(ctx context.Context, userID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.Follow{}).Where("follower_id = ?", userID).Count(&count).Error
+	return count, err
+}

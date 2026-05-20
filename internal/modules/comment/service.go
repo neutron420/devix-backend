@@ -65,10 +65,14 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 		ID: comment.ID.String(), PostID: postID.String(), Content: content, Depth: depth,
 		CreatedAt: now.Format(time.RFC3339), UpdatedAt: now.Format(time.RFC3339),
 	}
-	s.wsService.NotifyRoom(ctx, "post:"+postID.String(), "new_comment", res)
+	if s.wsService != nil {
+		s.wsService.NotifyRoom(ctx, "post:"+postID.String(), "new_comment", res)
+	}
 
-	// Trigger Notification
 	go func() {
+		if s.notifService == nil {
+			return
+		}
 		// If it's a reply, notify parent author
 		if comment.ParentID != nil {
 			parent, err := s.repo.GetByID(context.Background(), *comment.ParentID)
@@ -81,11 +85,10 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 				}
 			}
 		} else {
-			// Notify post author (we'd need post author ID here)
-			// For now, let's just use the repo to find post author
 			postAuthorID, err := s.repo.GetPostAuthorID(context.Background(), postID)
 			if err != nil {
 				s.log.Warn().Err(err).Msg("failed to get post author for notification")
+				return
 			}
 			if err := s.notifService.CreateNotification(context.Background(), postAuthorID, authorID, comment.ID, "commented"); err != nil {
 				s.log.Warn().Err(err).Msg("failed to create comment notification")

@@ -38,16 +38,29 @@ func (s *Service) GetUserNotifications(ctx context.Context, userID uuid.UUID, pa
 		return nil, err
 	}
 
-	unreadCount, _ := s.repo.GetUnreadCount(ctx, userID)
+	unreadCount, err := s.repo.GetUnreadCount(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 
 	responses := make([]NotificationResponse, 0, len(notifications))
 	for _, n := range notifications {
 		responses = append(responses, s.toResponse(&n))
 	}
 
+	total, err := s.repo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	hasMore := int64(offset+len(responses)) < total
+
 	return &NotificationListResponse{
 		Notifications: responses,
 		UnreadCount:   unreadCount,
+		Page:          page,
+		Limit:         limit,
+		Total:         total,
+		HasMore:       hasMore,
 	}, nil
 }
 

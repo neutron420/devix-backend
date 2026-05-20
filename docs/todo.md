@@ -1,61 +1,24 @@
-# Devix Project Roadmap
+# Backend TODO (Devix)
 
-<!-- 1. Phase 1 - Product Depth
-   1.1. Persistent notification system (Database storage + read/unread status + fetch API)
-   1.2. Bookmark and save posts functionality
-   1.3. Follow system (Followers/Following relationships + following-only feed)
-   1.4. Feed ranking algorithm (Mix of recent, popular, and following content)
-   1.5. Extended user settings (Profile management, preferences) // Done -->
-<!-- 
-2. Phase 2 - Performance and Optimization
-   2.1. Advanced Redis caching (Feed, post, and user profile caching)
-   2.2. Query optimization (Strategic indexing, join optimization, slow query resolution)
-   2.3. Cursor pagination improvements (Edge case handling and consistency)
-   2.4. CDN integration for global media delivery
-   2.5. Background job processing for heavy computational tasks //Done -->
+This file lists remaining backend gaps or improvements to consider. Items marked Done are already applied.
 
-<!-- 3. Phase 3 - Real-Time Enhancements
-   3.1. Real-time notifications (Fully integrated with database persistence)
-   3.2. Live comment updates (Post-level WebSocket subscriptions)
-   3.3. Typing indicators for active discussions
-   3.4. WebSocket scaling using Redis Pub/Sub //Done -->
+## Done (recent additions)
+- [x] Tag search on `GET /tags` using `q` and `limit`
+- [x] Org detail endpoint: `GET /organizations/:id`
+- [x] Comment vote removal: `DELETE /comments/:id/vote`
+- [x] Follower/following counts in profile responses
+- [x] Search alias: `GET /search` mapped to post list
 
-<!-- 4. Phase 4 - Search and Discovery
-   4.1. Elasticsearch integration (Full-text search, ranking, and relevance tuning)
-   4.2. Advanced search filters and discovery algorithms
-   4.3. Trending tags and popular posts system
-   4.4. Explore feed for content discovery //Done -->
+## Missing or incomplete
+- [x] Organization management: add update, delete, and list endpoints (and optional get-by-slug)
+- [x] Organization members: include `username` and `display_name` in member list response
+- [x] Organization membership: add remove member endpoint (repo has RemoveMember)
+- [x] Analytics tracking: call `TrackView` for post/profile views; include IP hash, country, referrer
+- [x] Profile cache invalidation after follow/unfollow (public profile counts can be stale)
+- [x] Notifications pagination: consider cursor or consistent paging meta for list endpoints
+- [x] Search pagination: ES search only for first page; decide on deep paging strategy
 
-<!-- 5. Phase 5 - Security and Reliability
-   5.1. Advanced rate limiting (User-based and IP-based)
-   5.2. Account protection (Email verification, secure password reset flows)
-   5.3. Audit logging for critical system actions
-   5.4. Enhanced input sanitization and XSS protection
-   5.5. API abuse and bot detection systems // Done -->
-
-<!-- 6. Phase 6 - Observability and Monitoring
-   6.1. Metrics collection (Latency, error rates, throughput)
-   6.2. Prometheus integration for time-series data
-   6.3. Grafana dashboards for system visualization
-   6.4. Distributed tracing for request flow tracking
-   6.5. Automated health checks and uptime monitoring // Done for now  -->
-
-<!-- 7. Phase 7 - DevOps and Deployment
-   7.1. Dockerization of backend services
-   7.2. CI/CD pipeline implementation (Automated build and deployment)
-   7.3. Environment-based configuration management (Development, Staging, Production)
-   7.4. Load balancing and traffic management
-   7.5. Auto-scaling strategy (Transition to Kubernetes) // Done -->
-
-<!-- 8. Phase 8 - Advanced Backend Engineering
-   8.1. Modular monolith decomposition into microservices (As required by scale) // Addressed via Modular Monolith
-   8.2. Message queue implementation for asynchronous event processing // Done (Redis Streams)
-   8.3. Event-driven architecture (Internal event bus) // Done (Redis Streams)
-   8.4. Service-to-service communication patterns and service discovery // Addressed via Go interfaces -->
-
-9. Phase 9 - Product Features ✅
-   - [x] 9.1. Reputation system (User points, levels, and badges)
-   - [x] 9.2. Post drafts and autosave functionality
-   - [x] 9.3. Content moderation tools and reporting systems
-   - [x] 9.4. User activity history and engagement tracking
-   - [x] 9.5. Advanced tagging and taxonomy system
+## Nice to have
+- [x] OpenAPI/Swagger docs for all endpoints
+- [x] Endpoint tests for auth, posts, comments, and notifications
+- [x] Rate-limit settings per route category documented

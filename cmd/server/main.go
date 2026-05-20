@@ -178,8 +178,8 @@ func main() {
 
 	handlers := &router.Handlers{
 		Auth:         auth.NewHandler(authService),
-		User:         user.NewHandler(userService, mediaService),
-		Post:         post.NewHandler(postService, mediaService),
+		User:         user.NewHandler(userService, mediaService, analyticsService),
+		Post:         post.NewHandler(postService, mediaService, analyticsService),
 		Comment:      comment.NewHandler(commentService),
 		Tag:          tag.NewHandler(tagService),
 		Vote:         vote.NewHandler(voteService),

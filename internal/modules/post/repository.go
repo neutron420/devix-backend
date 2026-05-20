@@ -170,6 +170,10 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 		}
 	}
 
+	if query.Offset > 0 && query.After == "" && query.Before == "" {
+		db = db.Offset(query.Offset)
+	}
+
 	if isTrending {
 		// Smart Score: (Votes*2 + Comments*3 + Views*0.1 + 1) / (HoursSinceCreation + 2)^1.8
 		scoreExpr := "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / POWER(EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 + 2, 1.8)"
