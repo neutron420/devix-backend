@@ -213,14 +213,31 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 		}
 	}
 
-	for i := range posts {
-		var author models.User
-		if err := r.db.WithContext(ctx).First(&author, "id = ?", posts[i].AuthorID).Error; err == nil {
-			posts[i].Author = &models.UserPublicProfile{
-				ID:          author.ID,
-				Username:    author.Username,
-				DisplayName: author.DisplayName,
-				AvatarURL:   author.AvatarURL,
+	if len(posts) > 0 {
+		authorIDs := make([]uuid.UUID, 0, len(posts))
+		seen := make(map[uuid.UUID]bool)
+		for _, p := range posts {
+			if !seen[p.AuthorID] {
+				seen[p.AuthorID] = true
+				authorIDs = append(authorIDs, p.AuthorID)
+			}
+		}
+
+		var authors []models.User
+		if err := r.db.WithContext(ctx).Where("id IN ?", authorIDs).Find(&authors).Error; err == nil {
+			authorMap := make(map[uuid.UUID]*models.User)
+			for i := range authors {
+				authorMap[authors[i].ID] = &authors[i]
+			}
+			for i := range posts {
+				if author, ok := authorMap[posts[i].AuthorID]; ok {
+					posts[i].Author = &models.UserPublicProfile{
+						ID:          author.ID,
+						Username:    author.Username,
+						DisplayName: author.DisplayName,
+						AvatarURL:   author.AvatarURL,
+					}
+				}
 			}
 		}
 	}
@@ -310,12 +327,17 @@ func (r *Repository) ListDrafts(ctx context.Context, authorID uuid.UUID) ([]mode
 	if err != nil {
 		return nil, err
 	}
-	for i := range posts {
+	if len(posts) > 0 {
 		var author models.User
-		if err := r.db.WithContext(ctx).First(&author, "id = ?", posts[i].AuthorID).Error; err == nil {
-			posts[i].Author = &models.UserPublicProfile{
-				ID: author.ID, Username: author.Username,
-				DisplayName: author.DisplayName, AvatarURL: author.AvatarURL,
+		if err := r.db.WithContext(ctx).First(&author, "id = ?", authorID).Error; err == nil {
+			profile := &models.UserPublicProfile{
+				ID:          author.ID,
+				Username:    author.Username,
+				DisplayName: author.DisplayName,
+				AvatarURL:   author.AvatarURL,
+			}
+			for i := range posts {
+				posts[i].Author = profile
 			}
 		}
 	}

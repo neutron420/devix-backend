@@ -11,8 +11,8 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtManager *jwtpkg.Ma
 	reports.Use(middleware.Auth(jwtManager))
 	{
 		reports.POST("", handler.Create)
-		reports.GET("/pending", handler.ListPending)
-		reports.GET("", handler.ListAll)
-		reports.PATCH("/:id", handler.Review)
+		reports.GET("/pending", middleware.RequireRole("admin", "moderator"), handler.ListPending)
+		reports.GET("", middleware.RequireRole("admin", "moderator"), handler.ListAll)
+		reports.PATCH("/:id", middleware.RequireRole("admin", "moderator"), handler.Review)
 	}
 }

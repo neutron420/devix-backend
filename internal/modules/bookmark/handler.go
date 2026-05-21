@@ -25,7 +25,7 @@ func (h *Handler) ToggleBookmark(c *gin.Context) {
 		response.Error(c, apperrors.Unauthorized("Authentication required"))
 		return
 	}
-	postID, err := uuid.Parse(c.Param("id"))
+	postID, err := uuid.Parse(c.Param("slug"))
 	if err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid post ID"))
 		return

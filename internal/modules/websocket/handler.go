@@ -11,21 +11,31 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-
-		return true
-	},
-}
-
 type Handler struct {
-	Hub *Hub
+	Hub      *Hub
+	upgrader websocket.Upgrader
 }
 
-func NewHandler(hub *Hub) *Handler {
-	return &Handler{Hub: hub}
+func NewHandler(hub *Hub, allowedOrigins []string) *Handler {
+	return &Handler{
+		Hub: hub,
+		upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				if origin == "" {
+					return true
+				}
+				for _, allowed := range allowedOrigins {
+					if allowed == "*" || origin == allowed {
+						return true
+					}
+				}
+				return false
+			},
+		},
+	}
 }
 
 func (h *Handler) ServeWS(c *gin.Context) {
@@ -36,7 +46,7 @@ func (h *Handler) ServeWS(c *gin.Context) {
 		return
 	}
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 
 		return

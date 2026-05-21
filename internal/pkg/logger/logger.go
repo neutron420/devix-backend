@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func New(env string) zerolog.Logger {
+func New(env string, level string) zerolog.Logger {
 	var output io.Writer
 
 	if env == "development" {
@@ -22,7 +22,13 @@ func New(env string) zerolog.Logger {
 		output = os.Stdout
 	}
 
+	lvl, err := zerolog.ParseLevel(level)
+	if err != nil {
+		lvl = zerolog.InfoLevel
+	}
+
 	return zerolog.New(output).
+		Level(lvl).
 		With().
 		Timestamp().
 		Caller().

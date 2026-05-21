@@ -18,7 +18,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *Handler, jwtManager *jwtpkg.Manager) 
 	posts := r.Group("/posts")
 	posts.Use(middleware.Auth(jwtManager))
 	{
-		posts.POST("/:id/bookmark", h.ToggleBookmark)
-		posts.DELETE("/:id/bookmark", h.ToggleBookmark) // Both POST and DELETE can toggle
+		posts.POST("/:slug/bookmark", h.ToggleBookmark)
+		posts.DELETE("/:slug/bookmark", h.ToggleBookmark) // Both POST and DELETE can toggle
 	}
 }

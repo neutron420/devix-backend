@@ -32,9 +32,31 @@ func (r *Repository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, o
 		return nil, err
 	}
 
+	if len(notifications) == 0 {
+		return notifications, nil
+	}
+
+	actorIDs := make([]uuid.UUID, 0, len(notifications))
+	seen := make(map[uuid.UUID]bool)
+	for _, n := range notifications {
+		if !seen[n.ActorID] {
+			seen[n.ActorID] = true
+			actorIDs = append(actorIDs, n.ActorID)
+		}
+	}
+
+	var actors []models.User
+	if err := r.db.WithContext(ctx).Where("id IN ?", actorIDs).Find(&actors).Error; err != nil {
+		return nil, err
+	}
+
+	actorMap := make(map[uuid.UUID]*models.User)
+	for i := range actors {
+		actorMap[actors[i].ID] = &actors[i]
+	}
+
 	for i := range notifications {
-		var actor models.User
-		if err := r.db.WithContext(ctx).First(&actor, "id = ?", notifications[i].ActorID).Error; err == nil {
+		if actor, ok := actorMap[notifications[i].ActorID]; ok {
 			notifications[i].Actor = &models.UserPublicProfile{
 				ID:          actor.ID,
 				Username:    actor.Username,

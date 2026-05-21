@@ -48,7 +48,7 @@ func main() {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
-	log := logger.New(cfg.Server.Env)
+	log := logger.New(cfg.Server.Env, cfg.Server.LogLevel)
 	log.Info().
 		Str("env", cfg.Server.Env).
 		Str("port", cfg.Server.Port).
@@ -188,7 +188,7 @@ func main() {
 		Follow:       follow.NewHandler(followService),
 		Report:       report.NewHandler(reportService),
 		Activity:     activity.NewHandler(activityService),
-		WS:           wsmod.NewHandler(hub),
+		WS:           wsmod.NewHandler(hub, cfg.CORS.Origins),
 		Chat:         chat.NewHandler(chatService),
 		Org:          org.NewHandler(orgService),
 		Poll:         poll.NewHandler(pollService),

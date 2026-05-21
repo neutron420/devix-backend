@@ -45,6 +45,7 @@ type ElasticsearchConfig struct {
 type ServerConfig struct {
 	Port         string
 	Env          string
+	LogLevel     string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 }
@@ -133,6 +134,7 @@ func Load() (*Config, error) {
 		Server: ServerConfig{
 			Port:         getEnv("SERVER_PORT", "8080"),
 			Env:          getEnv("SERVER_ENV", "development"),
+			LogLevel:     getEnv("LOG_LEVEL", "info"),
 			ReadTimeout:  getDurationEnv("SERVER_READ_TIMEOUT", 10*time.Second),
 			WriteTimeout: getDurationEnv("SERVER_WRITE_TIMEOUT", 30*time.Second),
 		},

@@ -60,11 +60,10 @@ The database schema will be synchronized automatically upon application startup.
 
 The backend is designed for iterative expansion. Future implementations include:
 
-1. Advanced Search: Integration of Elasticsearch for high-performance technical search and indexing.
-2. Global Caching: Redis implementation for high-traffic data points and session management.
-3. Social Authentication: Support for OAuth2 providers, specifically GitHub and Google.
-4. Background Processing: Dedicated worker queues for asynchronous tasks and media optimization.
-5. Observability: Integration of structured logging and performance monitoring tools.
+1. Social Authentication: Support for OAuth2 providers, specifically GitHub and Google.
+2. Content Moderation: Auto-flagging of spam or inappropriate content using ML/AI models.
+3. Multi-region Deployment: Database replication and geographical traffic routing.
+4. Comprehensive Testing Suite: Integration and unit testing across all modules.
 
 ---
 

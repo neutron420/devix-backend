@@ -22,6 +22,5 @@ tidy:
 
 clean:
 	@echo "Cleaning build artifacts..."
-	@if exist bin (rmdir /s /q bin)
-	@if exist coverage.out (del coverage.out)
-	@if exist coverage.html (del coverage.html)
+	@go clean -cache 2>/dev/null || true
+	@rm -rf bin coverage.out coverage.html 2>/dev/null || del /q /f bin coverage.out coverage.html 2>nul || true

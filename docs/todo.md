@@ -20,5 +20,5 @@ This file lists remaining backend gaps or improvements to consider. Items marked
 
 ## Nice to have
 - [x] OpenAPI/Swagger docs for all endpoints
-- [x] Endpoint tests for auth, posts, comments, and notifications
+- [ ] Endpoint tests for auth, posts, comments, and notifications
 - [x] Rate-limit settings per route category documented
