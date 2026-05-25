@@ -43,12 +43,6 @@ func TestPostAndCommentEndpointsValidateAuthAndIDs(t *testing.T) {
 	router.ServeHTTP(commentRec, commentReq)
 	require.Equal(t, http.StatusUnauthorized, commentRec.Code, commentRec.Body.String())
 
-	updateReq := httptest.NewRequest(http.MethodPut, "/api/v1/posts/not-a-uuid", strings.NewReader(`{"title":"Updated title"}`))
-	updateReq.Header.Set("Authorization", "Bearer "+token)
-	updateReq.Header.Set("Content-Type", "application/json")
-	updateRec := httptest.NewRecorder()
-	router.ServeHTTP(updateRec, updateReq)
-	require.Equal(t, http.StatusBadRequest, updateRec.Code, updateRec.Body.String())
 
 	commentsReq := httptest.NewRequest(http.MethodGet, "/api/v1/posts/not-a-uuid/comments", nil)
 	commentsRec := httptest.NewRecorder()

@@ -61,7 +61,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Register a new user
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/SignupRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
         "400": { $ref: "#/components/responses/Error" }
@@ -71,7 +71,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Authenticate a user
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/LoginRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
         "401": { $ref: "#/components/responses/Error" }
@@ -81,7 +81,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Refresh access token
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/RefreshRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
         "401": { $ref: "#/components/responses/Error" }
@@ -90,7 +90,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Revoke a refresh token
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/RefreshRequest" }
       responses:
         "204": { description: Logged out }
   /api/v1/auth/verify-email:
@@ -98,7 +98,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Verify email token
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/VerifyEmailRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
   /api/v1/auth/forgot-password:
@@ -106,7 +106,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Request password reset
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/ForgotPasswordRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
   /api/v1/auth/reset-password:
@@ -114,7 +114,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Reset password with token
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/ResetPasswordRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
   /api/v1/me:
@@ -127,7 +127,7 @@ paths:
     put:
       tags: [Users]
       summary: Update current user profile
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/UpdateProfileRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
     delete:
@@ -225,31 +225,31 @@ paths:
     post:
       tags: [Posts]
       summary: Create a post
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/CreatePostRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
-  /api/v1/posts/{id}:
+  /api/v1/posts/{slug}:
     get:
       tags: [Posts]
       security: []
       summary: Get post by slug
       parameters:
-        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Slug"
       responses:
         "200": { $ref: "#/components/responses/OK" }
     put:
       tags: [Posts]
       summary: Update a post
       parameters:
-        - $ref: "#/components/parameters/ID"
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+        - $ref: "#/components/parameters/Slug"
+      requestBody: { $ref: "#/components/requestBodies/UpdatePostRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
     delete:
       tags: [Posts]
       summary: Delete a post
       parameters:
-        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Slug"
       responses:
         "204": { description: Deleted }
   /api/v1/posts/drafts:
@@ -258,21 +258,21 @@ paths:
       summary: List current user's drafts
       responses:
         "200": { $ref: "#/components/responses/OK" }
-  /api/v1/posts/{id}/autosave:
+  /api/v1/posts/{slug}/autosave:
     patch:
       tags: [Posts]
       summary: Autosave a draft post
       parameters:
-        - $ref: "#/components/parameters/ID"
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+        - $ref: "#/components/parameters/Slug"
+      requestBody: { $ref: "#/components/requestBodies/AutosaveRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
-  /api/v1/posts/{id}/media:
+  /api/v1/posts/{slug}/media:
     post:
       tags: [Posts]
       summary: Upload media to a post
       parameters:
-        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Slug"
       requestBody:
         content:
           multipart/form-data:
@@ -341,7 +341,7 @@ paths:
       summary: Create post comment
       parameters:
         - $ref: "#/components/parameters/ID"
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/CreateCommentRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
   /api/v1/comments/{id}:
@@ -350,7 +350,7 @@ paths:
       summary: Update comment
       parameters:
         - $ref: "#/components/parameters/ID"
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/UpdateCommentRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
     delete:
@@ -404,7 +404,7 @@ paths:
       summary: Vote on post
       parameters:
         - $ref: "#/components/parameters/ID"
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/VoteRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
     delete:
@@ -420,7 +420,7 @@ paths:
       summary: Vote on comment
       parameters:
         - $ref: "#/components/parameters/ID"
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/VoteRequest" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
     delete:
@@ -485,7 +485,7 @@ paths:
     post:
       tags: [Reports]
       summary: Create report
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/CreateReportRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
   /api/v1/reports/pending:
@@ -516,7 +516,7 @@ paths:
     post:
       tags: [Chat]
       summary: Send chat message
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/SendMessageRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
   /api/v1/chat/conversations:
@@ -566,7 +566,7 @@ paths:
     post:
       tags: [Organizations]
       summary: Create organization
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/CreateOrgRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
   /api/v1/organizations/slug/{slug}:
@@ -638,7 +638,7 @@ paths:
     post:
       tags: [Polls]
       summary: Create poll
-      requestBody: { $ref: "#/components/requestBodies/JSON" }
+      requestBody: { $ref: "#/components/requestBodies/CreatePollRequest" }
       responses:
         "201": { $ref: "#/components/responses/Created" }
   /api/v1/polls/{id}/vote:
@@ -699,6 +699,11 @@ components:
       name: q
       in: query
       schema: { type: string }
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string }
     Tag:
       name: tag
       in: query
@@ -711,6 +716,91 @@ components:
           schema:
             type: object
             additionalProperties: true
+    SignupRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SignupRequest" }
+    LoginRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/LoginRequest" }
+    RefreshRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/RefreshRequest" }
+    VerifyEmailRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
+    ForgotPasswordRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ForgotPasswordRequest" }
+    ResetPasswordRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ResetPasswordRequest" }
+    CreatePostRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CreatePostRequest" }
+    UpdatePostRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UpdatePostRequest" }
+    AutosaveRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AutosaveRequest" }
+    CreateCommentRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CreateCommentRequest" }
+    UpdateCommentRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UpdateCommentRequest" }
+    VoteRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/VoteRequest" }
+    SendMessageRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SendMessageRequest" }
+    CreateReportRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CreateReportRequest" }
+    UpdateProfileRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UpdateProfileRequest" }
+    CreateOrgRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CreateOrgRequest" }
+    CreatePollRequest:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CreatePollRequest" }
   responses:
     OK:
       description: Successful response
@@ -733,6 +823,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
   schemas:
+    # --- Core Response Wrappers ---
     SuccessResponse:
       type: object
       properties:
@@ -764,3 +855,347 @@ components:
                 properties:
                   field: { type: string }
                   message: { type: string }
+
+    # --- Auth Request Schemas ---
+    SignupRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 30 }
+        email: { type: string, format: email, maxLength: 255 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string }
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    ResetPasswordRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string }
+        password: { type: string, minLength: 10, maxLength: 128 }
+
+    # --- Auth Response Schemas ---
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/AuthUserResponse" }
+        tokens: { $ref: "#/components/schemas/TokenResponse" }
+    AuthUserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        display_name: { type: string, nullable: true }
+        avatar_url: { type: string, nullable: true }
+        role: { type: string }
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    # --- User / Profile Schemas ---
+    UpdateProfileRequest:
+      type: object
+      properties:
+        display_name: { type: string, maxLength: 100 }
+        bio: { type: string }
+        website_url: { type: string, maxLength: 255 }
+        github_url: { type: string, maxLength: 255 }
+        twitter_url: { type: string, maxLength: 255 }
+        location: { type: string, maxLength: 100 }
+    UserProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        display_name: { type: string, nullable: true }
+        bio: { type: string, nullable: true }
+        avatar_url: { type: string, nullable: true }
+        role: { type: string }
+        is_active: { type: boolean }
+        is_verified: { type: boolean }
+        post_count: { type: integer }
+        reputation: { type: integer }
+        website_url: { type: string }
+        github_url: { type: string }
+        twitter_url: { type: string }
+        location: { type: string }
+        followers_count: { type: integer }
+        following_count: { type: integer }
+        created_at: { type: string, format: date-time }
+    UserPublicProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string, nullable: true }
+        avatar_url: { type: string, nullable: true }
+
+    # --- Post Schemas ---
+    CreatePostRequest:
+      type: object
+      required: [title, content, post_type]
+      properties:
+        title: { type: string, minLength: 5, maxLength: 300 }
+        content: { type: string, minLength: 10 }
+        post_type: { type: string, enum: [question, concept, build-log] }
+        status: { type: string, enum: [draft, published], default: published }
+        tags:
+          type: array
+          maxItems: 10
+          items: { type: string, minLength: 1, maxLength: 50 }
+        external_links: { type: string }
+    UpdatePostRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 5, maxLength: 300 }
+        content: { type: string, minLength: 10 }
+        status: { type: string, enum: [draft, published, archived] }
+        tags:
+          type: array
+          maxItems: 10
+          items: { type: string, minLength: 1, maxLength: 50 }
+        external_links: { type: string }
+    AutosaveRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        content: { type: string }
+    PostResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/UserPublicProfile" }
+        title: { type: string }
+        slug: { type: string }
+        content: { type: string }
+        post_type: { type: string, enum: [question, concept, build-log] }
+        status: { type: string, enum: [draft, published, archived] }
+        view_count: { type: integer }
+        vote_count: { type: integer }
+        comment_count: { type: integer }
+        is_pinned: { type: boolean }
+        tags:
+          type: array
+          items: { $ref: "#/components/schemas/TagResponse" }
+        media:
+          type: array
+          items: { $ref: "#/components/schemas/MediaResponse" }
+        external_links: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    # --- Comment Schemas ---
+    CreateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 5000 }
+        parent_id: { type: string, format: uuid }
+    UpdateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 5000 }
+    CommentResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        post_id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/UserPublicProfile" }
+        parent_id: { type: string, format: uuid, nullable: true }
+        content: { type: string }
+        depth: { type: integer }
+        vote_count: { type: integer }
+        is_deleted: { type: boolean }
+        replies:
+          type: array
+          items: { $ref: "#/components/schemas/CommentResponse" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    # --- Tag Schemas ---
+    TagResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+
+    # --- Media Schemas ---
+    MediaResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        file_url: { type: string }
+        file_type: { type: string, enum: [image, video, document] }
+        file_size: { type: integer, format: int64 }
+        mime_type: { type: string }
+        original_name: { type: string }
+
+    # --- Vote Schemas ---
+    VoteRequest:
+      type: object
+      required: [vote_type]
+      properties:
+        vote_type: { type: integer, enum: [1, -1], description: "1 for upvote, -1 for downvote" }
+
+    # --- Notification Schemas ---
+    NotificationResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        actor:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            username: { type: string }
+            avatar_url: { type: string, nullable: true }
+        action: { type: string }
+        target_id: { type: string, format: uuid }
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
+    NotificationListResponse:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items: { $ref: "#/components/schemas/NotificationResponse" }
+        unread_count: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        has_more: { type: boolean }
+
+    # --- Chat Schemas ---
+    SendMessageRequest:
+      type: object
+      required: [recipient_id, content]
+      properties:
+        recipient_id: { type: string, format: uuid }
+        content: { type: string }
+    ConversationResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        other_user: { $ref: "#/components/schemas/UserPublicProfile" }
+        last_message: { type: string }
+        last_msg_at: { type: string, format: date-time }
+        unread_count: { type: integer }
+    MessageResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        sender_id: { type: string, format: uuid }
+        content: { type: string }
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    # --- Organization Schemas ---
+    CreateOrgRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 100 }
+        bio: { type: string }
+        website_url: { type: string, maxLength: 255 }
+    OrgResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        bio: { type: string }
+        avatar_url: { type: string }
+        website_url: { type: string }
+        owner_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+
+    # --- Poll Schemas ---
+    CreatePollRequest:
+      type: object
+      required: [post_id, question, options]
+      properties:
+        post_id: { type: string, format: uuid }
+        question: { type: string, maxLength: 255 }
+        options:
+          type: array
+          minItems: 2
+          items: { type: string, maxLength: 255 }
+        expires_at: { type: string, format: date-time }
+    PollVoteRequest:
+      type: object
+      required: [option_id]
+      properties:
+        option_id: { type: string, format: uuid }
+
+    # --- Report Schemas ---
+    CreateReportRequest:
+      type: object
+      required: [target_id, target_type, reason]
+      properties:
+        target_id: { type: string, format: uuid }
+        target_type: { type: string, enum: [post, comment, user] }
+        reason: { type: string }
+        details: { type: string }
+
+    # --- Activity Schemas ---
+    ActivityResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string }
+        target_type: { type: string }
+        target_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+
+    # --- Analytics Schemas ---
+    PostAnalyticsResponse:
+      type: object
+      properties:
+        total_views: { type: integer }
+        unique_views: { type: integer }
+        countries:
+          type: array
+          items:
+            type: object
+            properties:
+              country: { type: string }
+              count: { type: integer }
+        devices:
+          type: array
+          items:
+            type: object
+            properties:
+              device: { type: string }
+              count: { type: integer }
+        referrers:
+          type: array
+          items:
+            type: object
+            properties:
+              referrer: { type: string }
+              count: { type: integer }

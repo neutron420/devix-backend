@@ -72,10 +72,27 @@ func (r *Repository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.Po
 		strIDs[i] = id.String()
 	}
 
-	err := r.db.WithContext(ctx).
-		Where("id IN ?", ids).
-		Order(gorm.Expr("array_position(ARRAY[?]::uuid[], posts.id)", strIDs)).
-		Find(&posts).Error
+	var err error
+	if r.db.Dialector.Name() == "sqlite" {
+		err = r.db.WithContext(ctx).Where("id IN ?", ids).Find(&posts).Error
+		if err == nil {
+			idMap := make(map[uuid.UUID]models.Post)
+			for _, p := range posts {
+				idMap[p.ID] = p
+			}
+			posts = make([]models.Post, 0, len(ids))
+			for _, id := range ids {
+				if p, ok := idMap[id]; ok {
+					posts = append(posts, p)
+				}
+			}
+		}
+	} else {
+		err = r.db.WithContext(ctx).
+			Where("id IN ?", ids).
+			Order(gorm.Expr("array_position(ARRAY[?]::uuid[], posts.id)", strIDs)).
+			Find(&posts).Error
+	}
 
 	return posts, false, err
 }
@@ -108,8 +125,11 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	}
 
 	if query.Search != "" {
-
-		db = db.Where("to_tsvector('english', posts.title || ' ' || posts.content) @@ plainto_tsquery('english', ?)", query.Search)
+		if r.db.Dialector.Name() == "sqlite" {
+			db = db.Where("posts.title LIKE ? OR posts.content LIKE ?", "%"+query.Search+"%", "%"+query.Search+"%")
+		} else {
+			db = db.Where("to_tsvector('english', posts.title || ' ' || posts.content) @@ plainto_tsquery('english', ?)", query.Search)
+		}
 	}
 
 	if query.Tag != "" {
@@ -144,6 +164,9 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 						cursorScore *= 1.5
 					}
 					scoreExpr := "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / POWER(EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 + 2, 1.8)"
+					if r.db.Dialector.Name() == "sqlite" {
+						scoreExpr = "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / (((strftime('%s','now') - strftime('%s',posts.created_at))/3600) + 2)"
+					}
 					baseScoreExpr := scoreExpr
 					if query.RequestUserID != uuid.Nil {
 						baseScoreExpr = "CASE WHEN follows.follower_id IS NOT NULL THEN (" + scoreExpr + ") * 1.5 ELSE (" + scoreExpr + ") END"
@@ -177,6 +200,9 @@ func (r *Repository) List(ctx context.Context, query FeedQuery) ([]models.Post, 
 	if isTrending {
 		// Smart Score: (Votes*2 + Comments*3 + Views*0.1 + 1) / (HoursSinceCreation + 2)^1.8
 		scoreExpr := "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / POWER(EXTRACT(EPOCH FROM (NOW() - posts.created_at)) / 3600 + 2, 1.8)"
+		if r.db.Dialector.Name() == "sqlite" {
+			scoreExpr = "((posts.vote_count * 2.0) + (posts.comment_count * 3.0) + (posts.view_count * 0.1) + 1) / (((strftime('%s','now') - strftime('%s',posts.created_at))/3600) + 2)"
+		}
 		baseScoreExpr := scoreExpr
 
 		if query.RequestUserID != uuid.Nil {

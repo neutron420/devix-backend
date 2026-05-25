@@ -42,9 +42,9 @@ app/
     following/
     post/
       new/
-      [id]/
-      [id]/edit/
-      [id]/analytics/
+      [slug]/
+      [slug]/edit/
+      [slug]/analytics/
     drafts/
     search/
     tag/
@@ -118,7 +118,7 @@ Use a single shared `apiClient` with:
 - Bottom tab bar: Home, Explore, Create, Chat, Profile (same as mobile spec)
 
 ### Global state
-- Current user: `GET /users/me`
+- Current user: `GET /me`
 - Unread notifications count: `GET /notifications`
 - WebSocket connection for live updates
 
@@ -179,8 +179,8 @@ Use a single shared `apiClient` with:
 ---
 
 ### 8) Post Detail
-- Route: `/post/[id]`
-- API: `GET /posts/:id` (backend expects a slug in this path)
+- Route: `/post/[slug]`
+- API: `GET /posts/:slug`
 - UI:
   - Author header with follow button
   - Post type badge, title, full content markdown
@@ -189,9 +189,9 @@ Use a single shared `apiClient` with:
   - Actions: vote, comment, bookmark, share, report
 
 Related actions:
-- Use the `id` (UUID) from the post response for vote, comment, and bookmark actions
-- Vote: `POST /posts/:id/vote` and `DELETE /posts/:id/vote`
-- Bookmark: `POST /posts/:id/bookmark` and `DELETE /posts/:id/bookmark`
+- The detail page uses the post **slug** in the URL, but vote, comment, and bookmark actions use the post **UUID** (from the post response `id` field)
+- Vote: `POST /posts/:id/vote` and `DELETE /posts/:id/vote` (UUID)
+- Bookmark: `POST /posts/:id/bookmark` and `DELETE /posts/:id/bookmark` (UUID)
 - Report: `POST /reports`
 
 ---
@@ -214,15 +214,15 @@ Related actions:
 
 ### 10) Create Post
 - Route: `/post/new`
-- API: `POST /posts`, `POST /posts/:id/media`, `PATCH /posts/:id/autosave`
+- API: `POST /posts`, `POST /posts/:slug/media`, `PATCH /posts/:slug/autosave`
 - UI:
   - Post type selector, title, markdown editor, tags autocomplete, media upload
   - Publish or Save as Draft
 - Tags autocomplete: `GET /tags?q=search_term&limit=50`
 
 ### 11) Edit Post
-- Route: `/post/[id]/edit`
-- API: `PUT /posts/:id`
+- Route: `/post/[slug]/edit`
+- API: `PUT /posts/:slug`
 - UI: same as Create Post, prefilled
 
 ### 12) Drafts
@@ -234,7 +234,7 @@ Related actions:
 
 ### 13) My Profile
 - Route: `/profile`
-- API: `GET /users/me`
+- API: `GET /me`
 - UI:
   - Profile header (avatar, display name, bio, links)
   - Stats row (posts, followers, following)
@@ -248,7 +248,7 @@ Related actions:
 
 ### 14) Edit Profile
 - Route: `/profile/edit`
-- API: `PUT /users/me`, `PUT /users/me/avatar`
+- API: `PUT /me`, `PUT /me/avatar`
 - UI: editable profile fields
 
 ### 15) Public Profile
@@ -326,9 +326,9 @@ Related actions:
 ### 23) Settings
 - Route: `/settings`
 - API:
-  - `PATCH /users/me/settings`
-  - `PATCH /users/me/status`
-  - `DELETE /users/me`
+  - `PATCH /me/settings`
+  - `PATCH /me/status`
+  - `DELETE /me`
 - UI:
   - Account section
   - Preferences
@@ -344,9 +344,10 @@ Related actions:
 - UI: options list and results bar chart
 
 ### 25) Analytics (Post Author)
-- Route: `/post/[id]/analytics`
+- Route: `/post/[slug]/analytics`
 - API: `GET /analytics/posts/:id`
 - UI: charts for views, referrers, devices, countries
+- Note: The route uses slug for navigation, but the analytics API uses the post UUID
 
 ### 26) Organizations (Basic)
 - Route: `/org/[id]`
@@ -414,7 +415,7 @@ The post card must support:
 ---
 
 ## Media Handling
-- Upload media via `POST /posts/:id/media` with multipart `files` field
+- Upload media via `POST /posts/:slug/media` with multipart `files` field
 - Display media using `NEXT_PUBLIC_API_URL` + `/uploads/...` for local files
 
 ---

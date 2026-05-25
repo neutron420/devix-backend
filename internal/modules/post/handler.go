@@ -190,17 +190,13 @@ func (h *Handler) Update(c *gin.Context) {
 		response.Error(c, apperrors.Unauthorized("Authentication required"))
 		return
 	}
-	postID, err := uuid.Parse(c.Param("slug"))
-	if err != nil {
-		response.Error(c, apperrors.BadRequest("Invalid post ID"))
-		return
-	}
+	slug := c.Param("slug")
 	var req UpdatePostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid request: "+err.Error()))
 		return
 	}
-	result, err := h.service.Update(c.Request.Context(), postID, userID, &req)
+	result, err := h.service.Update(c.Request.Context(), slug, userID, &req)
 	if err != nil {
 		var appErr *apperrors.AppError
 		if errors.As(err, &appErr) {
@@ -219,13 +215,9 @@ func (h *Handler) Delete(c *gin.Context) {
 		response.Error(c, apperrors.Unauthorized("Authentication required"))
 		return
 	}
-	postID, err := uuid.Parse(c.Param("slug"))
-	if err != nil {
-		response.Error(c, apperrors.BadRequest("Invalid post ID"))
-		return
-	}
+	slug := c.Param("slug")
 	role := c.GetString(middleware.ContextKeyUserRole)
-	if err := h.service.Delete(c.Request.Context(), postID, userID, role); err != nil {
+	if err := h.service.Delete(c.Request.Context(), slug, userID, role); err != nil {
 		var appErr *apperrors.AppError
 		if errors.As(err, &appErr) {
 			response.Error(c, appErr)
@@ -243,13 +235,9 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		response.Error(c, apperrors.Unauthorized("Authentication required"))
 		return
 	}
-	postID, err := uuid.Parse(c.Param("slug"))
-	if err != nil {
-		response.Error(c, apperrors.BadRequest("Invalid post ID"))
-		return
-	}
+	slug := c.Param("slug")
 
-	post, err := h.service.GetByID(c.Request.Context(), postID)
+	post, err := h.service.GetBySlug(c.Request.Context(), slug)
 	if err != nil {
 		var appErr *apperrors.AppError
 		if errors.As(err, &appErr) {
@@ -261,6 +249,11 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	}
 	if post.Author == nil || post.Author.ID != userID.String() {
 		response.Error(c, apperrors.Forbidden("You can only add media to your own posts"))
+		return
+	}
+	postID, err := uuid.Parse(post.ID)
+	if err != nil {
+		response.Error(c, apperrors.Internal(err))
 		return
 	}
 	form, err := c.MultipartForm()
@@ -321,17 +314,13 @@ func (h *Handler) Autosave(c *gin.Context) {
 		response.Error(c, apperrors.Unauthorized("Authentication required"))
 		return
 	}
-	postID, err := uuid.Parse(c.Param("slug"))
-	if err != nil {
-		response.Error(c, apperrors.BadRequest("Invalid post ID"))
-		return
-	}
+	slug := c.Param("slug")
 	var req AutosaveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, apperrors.BadRequest("Invalid request: "+err.Error()))
 		return
 	}
-	if err := h.service.Autosave(c.Request.Context(), postID, userID, &req); err != nil {
+	if err := h.service.Autosave(c.Request.Context(), slug, userID, &req); err != nil {
 		var appErr *apperrors.AppError
 		if errors.As(err, &appErr) {
 			response.Error(c, appErr)

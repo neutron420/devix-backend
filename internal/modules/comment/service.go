@@ -61,8 +61,14 @@ func (s *Service) Create(ctx context.Context, postID, authorID uuid.UUID, req *C
 	}
 	_ = s.repo.IncrementPostCommentCount(ctx, postID)
 
+	var parentIDStr *string
+	if comment.ParentID != nil {
+		pstr := comment.ParentID.String()
+		parentIDStr = &pstr
+	}
+
 	res := &CommentResponse{
-		ID: comment.ID.String(), PostID: postID.String(), Content: content, Depth: depth,
+		ID: comment.ID.String(), PostID: postID.String(), ParentID: parentIDStr, Content: content, Depth: depth,
 		CreatedAt: now.Format(time.RFC3339), UpdatedAt: now.Format(time.RFC3339),
 	}
 	if s.wsService != nil {
@@ -142,7 +148,6 @@ func (s *Service) Delete(ctx context.Context, commentID, userID uuid.UUID, userR
 
 func (s *Service) buildTree(flat []models.Comment) []CommentResponse {
 	responseMap := make(map[uuid.UUID]*CommentResponse)
-	var roots []CommentResponse
 	for _, c := range flat {
 		cr := CommentResponse{
 			ID: c.ID.String(), PostID: c.PostID.String(), Content: c.Content, Depth: c.Depth,
@@ -158,16 +163,28 @@ func (s *Service) buildTree(flat []models.Comment) []CommentResponse {
 		}
 		responseMap[c.ID] = &cr
 	}
-	for _, c := range flat {
+
+	// Build tree from bottom-up by iterating in reverse order
+	for i := len(flat) - 1; i >= 0; i-- {
+		c := flat[i]
 		cr := responseMap[c.ID]
 		if c.ParentID != nil {
 			if parent, ok := responseMap[*c.ParentID]; ok {
-				parent.Replies = append(parent.Replies, *cr)
-				continue
+				parent.Replies = append([]CommentResponse{*cr}, parent.Replies...)
 			}
 		}
-		roots = append(roots, *cr)
 	}
+
+	// Collect roots in forward order
+	var roots []CommentResponse
+	for _, c := range flat {
+		if c.ParentID == nil {
+			if cr, ok := responseMap[c.ID]; ok {
+				roots = append(roots, *cr)
+			}
+		}
+	}
+
 	if roots == nil {
 		roots = []CommentResponse{}
 	}

@@ -371,14 +371,15 @@ func (s *Service) ListExplore(ctx context.Context, userID uuid.UUID, query FeedQ
 	return res, nil
 }
 
-func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) (*PostResponse, error) {
-	post, err := s.repo.GetByID(ctx, postID)
+func (s *Service) Update(ctx context.Context, slug string, userID uuid.UUID, req *UpdatePostRequest) (*PostResponse, error) {
+	post, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, apperrors.Internal(err)
 	}
 	if post == nil {
 		return nil, apperrors.NotFound("Post")
 	}
+	postID := post.ID
 	if post.AuthorID != userID {
 		return nil, apperrors.Forbidden("You can only edit your own posts")
 	}
@@ -417,14 +418,15 @@ func (s *Service) Update(ctx context.Context, postID, userID uuid.UUID, req *Upd
 	return s.GetByID(ctx, postID)
 }
 
-func (s *Service) Delete(ctx context.Context, postID, userID uuid.UUID, userRole string) error {
-	post, err := s.repo.GetByID(ctx, postID)
+func (s *Service) Delete(ctx context.Context, slug string, userID uuid.UUID, userRole string) error {
+	post, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return apperrors.Internal(err)
 	}
 	if post == nil {
 		return apperrors.NotFound("Post")
 	}
+	postID := post.ID
 	if post.AuthorID != userID && userRole != "admin" && userRole != "moderator" {
 		return apperrors.Forbidden("You can only delete your own posts")
 	}
@@ -487,14 +489,15 @@ func (s *Service) ListDrafts(ctx context.Context, authorID uuid.UUID) ([]PostRes
 	return responses, nil
 }
 
-func (s *Service) Autosave(ctx context.Context, postID, userID uuid.UUID, req *AutosaveRequest) error {
-	post, err := s.repo.GetByID(ctx, postID)
+func (s *Service) Autosave(ctx context.Context, slug string, userID uuid.UUID, req *AutosaveRequest) error {
+	post, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return apperrors.Internal(err)
 	}
 	if post == nil {
 		return apperrors.NotFound("Post")
 	}
+	postID := post.ID
 	if post.AuthorID != userID {
 		return apperrors.Forbidden("You can only autosave your own drafts")
 	}
